@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+*.pyo
+*.pyd
+*.sqlite3
+instance/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.log
+app/static/generated/
+app/static/generated_files/
+app/static/uploads/

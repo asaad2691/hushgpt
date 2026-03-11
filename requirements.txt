@@ -1,0 +1,17 @@
+Flask==3.1.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.1.0
+python-dotenv==1.0.1
+PyMySQL==1.1.1
+requests==2.32.3
+huggingface_hub==0.27.0
+transformers==4.47.1
+Pillow==11.1.0
+diffusers==0.32.2
+accelerate==1.2.1
+safetensors==0.5.2
+easyocr==1.7.2
+python-docx==1.1.2
+pypdf==5.2.0
+reportlab==4.2.5
+waitress==3.0.2
