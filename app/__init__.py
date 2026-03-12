@@ -19,6 +19,7 @@ from .routes.jobs import jobs_bp
 from .routes.admin import admin_bp
 from .routes.memory import memory_bp
 from .routes.feedback import feedback_bp
+from .routes.persona import persona_bp
 
 
 def _warmup_pipelines(app):
@@ -161,6 +162,7 @@ def create_app(test_config=None):
     app.register_blueprint(admin_bp, url_prefix="/api")
     app.register_blueprint(memory_bp, url_prefix="/api")
     app.register_blueprint(feedback_bp, url_prefix="/api")
+    app.register_blueprint(persona_bp)
     app.register_blueprint(web_bp)
     app.extensions["job_manager"] = PersistentJobManager(app)
     _register_job_handlers(app, app.extensions["job_manager"])
