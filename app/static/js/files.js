@@ -10,6 +10,7 @@ async function analyzeFileFromChat(prompt) {
   formData.append("file", picked);
   formData.append("prompt", prompt);
   if (activeConversationId) formData.append("conversation_id", String(activeConversationId));
+  if (settings.selectedCollectionId) formData.append("collection_id", String(settings.selectedCollectionId));
 
   if (settings.backgroundJobs) {
     await queueJob("/api/jobs/file-analyze", () => formData, {
@@ -61,6 +62,7 @@ async function parseFileFromChat(prompt) {
   formData.append("parser_type", parserType);
   if (prompt) formData.append("prompt", prompt);
   if (activeConversationId) formData.append("conversation_id", String(activeConversationId));
+  if (settings.selectedCollectionId) formData.append("collection_id", String(settings.selectedCollectionId));
 
   const loading = addTypingIndicator();
   const res = await fetch("/api/files/parse", {
@@ -97,6 +99,7 @@ async function compareFilesFromChat(prompt) {
   formData.append("right_file", right);
   formData.append("prompt", prompt);
   if (activeConversationId) formData.append("conversation_id", String(activeConversationId));
+  if (settings.selectedCollectionId) formData.append("collection_id", String(settings.selectedCollectionId));
 
   const loading = addTypingIndicator();
   const res = await fetch("/api/files/compare", {

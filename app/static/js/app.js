@@ -305,6 +305,8 @@ function initAdvancedPanels() {
   loadJobsDrawer().catch(() => {});
   startJobsPolling();
   loadMemoryItems().catch(() => {});
+  loadCollections().catch(() => {});
+  bindCollectionsAndSearch();
   maybeShowOnboarding();
 }
 

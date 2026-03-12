@@ -1,6 +1,8 @@
 import json
 import math
 
+from sqlalchemy import or_
+
 from app.extensions import db
 from app.models import EmbeddingEntry
 
@@ -40,13 +42,17 @@ class VectorStoreService:
         db.session.flush()
         return len(chunks)
 
-    def search(self, client_id, query, top_k=None, source_types=None, conversation_id=None):
+    def search(self, client_id, query, top_k=None, source_types=None, conversation_id=None, source_key_prefixes=None):
         query_vector = self.embed(query)
         rows = EmbeddingEntry.query.filter_by(client_id=client_id)
         if conversation_id is not None:
             rows = rows.filter((EmbeddingEntry.conversation_id == conversation_id) | (EmbeddingEntry.conversation_id.is_(None)))
         if source_types:
             rows = rows.filter(EmbeddingEntry.source_type.in_(source_types))
+        if source_key_prefixes:
+            rows = rows.filter(
+                or_(*[EmbeddingEntry.source_key.like(f"{prefix}%") for prefix in source_key_prefixes])
+            )
         candidates = rows.all()
 
         scored = []

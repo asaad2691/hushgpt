@@ -1,11 +1,12 @@
 import os
 import json
+from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request
 
 from app.auth import require_api_key
 from app.extensions import db
-from app.models import Conversation, Message
+from app.models import CollectionAsset, Conversation, KnowledgeCollection, Message
 from app.services.file_tools import FileToolsService
 from app.services.vector_store import VectorStoreService
 
@@ -32,12 +33,53 @@ def _file_token(url, filename):
     return f"[[file:{url}|{filename}]]"
 
 
+def _collection_id_from_request():
+    raw = request.form.get("collection_id") or request.args.get("collection_id")
+    if raw in {None, ""}:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _save_asset_to_collection(collection_id, title, text, source_type="file", source_ref=""):
+    if not collection_id or not text:
+        return None
+    collection = KnowledgeCollection.query.filter_by(id=collection_id, client_id=_client_id()).first()
+    if collection is None:
+        return None
+    asset = CollectionAsset(
+        collection_id=collection.id,
+        client_id=_client_id(),
+        source_type=source_type,
+        title=(title or source_ref or "Document")[:220],
+        source_ref=(source_ref or title or "")[:500],
+        text_content=text,
+        preview=text[:500],
+        updated_at=datetime.utcnow(),
+    )
+    db.session.add(asset)
+    db.session.flush()
+    vectors = VectorStoreService(current_app.config)
+    vectors.index_text(
+        _client_id(),
+        "collection-document",
+        f"collection-{collection.id}-asset-{asset.id}",
+        text,
+        title=asset.title,
+    )
+    collection.updated_at = datetime.utcnow()
+    return asset
+
+
 @files_bp.post("/files/analyze")
 @require_api_key
 def analyze_file():
     uploaded = request.files.get("file")
     prompt = (request.form.get("prompt") or "").strip()
     conversation_id = request.form.get("conversation_id", type=int)
+    collection_id = _collection_id_from_request()
     if uploaded is None:
         return jsonify({"error": "file is required"}), 400
 
@@ -52,6 +94,7 @@ def analyze_file():
         try:
             vectors = VectorStoreService(current_app.config)
             vectors.index_text(_client_id(), "file-chunk", f"file-{conv.id}-{uploaded.filename}", result.get("full_text", result["text_preview"]), title=uploaded.filename, conversation_id=conv.id)
+            _save_asset_to_collection(collection_id, uploaded.filename, result.get("full_text", result["text_preview"]), source_ref=uploaded.filename)
         except Exception:
             pass
         user_text = f"[File Analyze] {uploaded.filename}\n{prompt}" if prompt else f"[File Analyze] {uploaded.filename}"
@@ -153,6 +196,7 @@ def compare_files():
     right = request.files.get("right_file")
     prompt = (request.form.get("prompt") or "").strip()
     conversation_id = request.form.get("conversation_id", type=int)
+    collection_id = _collection_id_from_request()
     if left is None or right is None:
         return jsonify({"error": "left_file and right_file are required"}), 400
 
@@ -168,6 +212,8 @@ def compare_files():
             vectors = VectorStoreService(current_app.config)
             vectors.index_text(_client_id(), "file-chunk", f"file-{conv.id}-{left.filename}", result.get("left_full_text", result["left_preview"]), title=left.filename, conversation_id=conv.id)
             vectors.index_text(_client_id(), "file-chunk", f"file-{conv.id}-{right.filename}", result.get("right_full_text", result["right_preview"]), title=right.filename, conversation_id=conv.id)
+            _save_asset_to_collection(collection_id, left.filename, result.get("left_full_text", result["left_preview"]), source_ref=left.filename)
+            _save_asset_to_collection(collection_id, right.filename, result.get("right_full_text", result["right_preview"]), source_ref=right.filename)
         except Exception:
             pass
         user_text = f"[File Compare] {left.filename} vs {right.filename}\n{prompt}".strip()
@@ -187,6 +233,7 @@ def parse_file():
     parser_type = (request.form.get("parser_type") or "").strip().lower()
     prompt = (request.form.get("prompt") or "").strip()
     conversation_id = request.form.get("conversation_id", type=int)
+    collection_id = _collection_id_from_request()
     if uploaded is None:
         return jsonify({"error": "file is required"}), 400
     if not parser_type:
@@ -198,7 +245,12 @@ def parse_file():
         conv = _get_or_create_conversation(conversation_id, f"File parse: {uploaded.filename}")
         if conv is None:
             return jsonify({"error": "conversation not found"}), 404
-        result = service.parse(uploaded.read(), uploaded.filename, parser_type)
+        file_bytes = uploaded.read()
+        result = service.parse(file_bytes, uploaded.filename, parser_type)
+        try:
+            _save_asset_to_collection(collection_id, uploaded.filename, service._extract_text(file_bytes, uploaded.filename), source_ref=uploaded.filename)
+        except Exception:
+            pass
         assistant_text = result.get("raw") or result.get("data") or result
         if not isinstance(assistant_text, str):
             assistant_text = json.dumps(assistant_text, indent=2, ensure_ascii=False)

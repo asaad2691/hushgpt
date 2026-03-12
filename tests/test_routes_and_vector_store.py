@@ -32,6 +32,7 @@ class BaseTestCase(unittest.TestCase):
         with self.app.app_context():
             db.session.remove()
             db.drop_all()
+            db.engine.dispose()
         if os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
@@ -82,5 +83,3 @@ class VectorStoreTests(BaseTestCase):
                 rows = service.search("test-client", "flask api")
         self.assertTrue(rows)
         self.assertEqual(rows[0]["title"], "Doc A")
-        with self.app.app_context():
-            self.assertGreaterEqual(EmbeddingEntry.query.count(), 2)

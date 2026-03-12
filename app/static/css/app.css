@@ -854,3 +854,68 @@ body {
         max-height: calc(100vh - 300px);
     }
 }
+
+.drawer-section {
+    display: grid;
+    gap: 0.7rem;
+    margin-bottom: 1.15rem;
+}
+
+.drawer-section-title {
+    color: #7dcfff;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.collection-card,
+.collection-asset-card,
+.command-result {
+    border: 1px solid var(--line-soft);
+    background: rgba(11, 18, 30, 0.82);
+    color: var(--text-main);
+    padding: 0.82rem 0.9rem;
+    text-align: left;
+}
+
+.collection-card.active {
+    border-color: rgba(120, 201, 255, 0.42);
+    background: rgba(14, 25, 44, 0.92);
+}
+
+.collection-card-top,
+.collection-asset-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.35rem;
+}
+
+.collection-card-title,
+.collection-asset-title,
+.command-result-title {
+    font-weight: 600;
+}
+
+.collection-card-meta,
+.collection-asset-meta {
+    color: #8ea2c8;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.collection-card-copy,
+.collection-asset-copy,
+.command-result-copy {
+    color: var(--text-dim);
+    font-size: 0.83rem;
+    line-height: 1.45;
+}
+
+.command-result:hover,
+.collection-card:hover {
+    border-color: rgba(120, 201, 255, 0.34);
+}

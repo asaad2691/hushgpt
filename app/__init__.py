@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from time import perf_counter
 
 from flask import Flask, g, request
@@ -7,6 +8,7 @@ from .extensions import db, migrate
 from .models import RequestLog
 from .services.job_manager import PersistentJobManager
 from .services.storage_lifecycle import StorageLifecycleService
+from .services.vector_store import VectorStoreService
 from .routes.health import health_bp
 from .routes.models import models_bp
 from .routes.chat import chat_bp
@@ -20,6 +22,8 @@ from .routes.admin import admin_bp
 from .routes.memory import memory_bp
 from .routes.feedback import feedback_bp
 from .routes.persona import persona_bp
+from .routes.collections import collections_bp
+from .routes.search import search_bp
 
 
 def _warmup_pipelines(app):
@@ -50,7 +54,7 @@ def _register_job_handlers(app, manager):
     import base64
 
     from .extensions import db
-    from .models import Conversation, Message
+    from .models import CollectionAsset, Conversation, KnowledgeCollection, Message
     from .services.file_tools import FileToolsService
     from .services.image_generator import ImageGenerationService
     from .services.image_reader import ImageReaderService
@@ -119,6 +123,31 @@ def _register_job_handlers(app, manager):
         service = FileToolsService(app.config, output_dir)
         file_bytes = base64.b64decode(payload["file_base64"])
         result = service.analyze(file_bytes, payload["filename"], payload.get("prompt", ""))
+        collection_id = payload.get("collection_id")
+        if collection_id:
+            collection = KnowledgeCollection.query.filter_by(id=collection_id, client_id=payload.get("client_id", "legacy-default")).first()
+            if collection is not None:
+                asset = CollectionAsset(
+                    collection_id=collection.id,
+                    client_id=payload.get("client_id", "legacy-default"),
+                    source_type="file",
+                    title=payload["filename"][:220],
+                    source_ref=payload["filename"][:500],
+                    text_content=result.get("full_text", result["text_preview"]),
+                    preview=result.get("full_text", result["text_preview"])[:500],
+                    updated_at=datetime.utcnow(),
+                )
+                db.session.add(asset)
+                db.session.flush()
+                vectors = VectorStoreService(app.config)
+                vectors.index_text(
+                    payload.get("client_id", "legacy-default"),
+                    "collection-document",
+                    f"collection-{collection.id}-asset-{asset.id}",
+                    asset.text_content,
+                    title=asset.title,
+                )
+                collection.updated_at = datetime.utcnow()
         prompt = payload.get("prompt", "")
         user_text = f"[File Analyze] {payload['filename']}\n{prompt}" if prompt else f"[File Analyze] {payload['filename']}"
         db.session.add(Message(conversation_id=conv.id, role="user", content=user_text))
@@ -147,7 +176,8 @@ def create_app(test_config=None):
 
     with app.app_context():
         from . import models  # noqa: F401
-        db.create_all()
+        if app.config.get("TESTING") or app.config.get("AUTO_CREATE_SCHEMA", True):
+            db.create_all()
         if app.config.get("AUTO_STORAGE_CLEANUP", True):
             StorageLifecycleService(app).cleanup()
 
@@ -162,6 +192,8 @@ def create_app(test_config=None):
     app.register_blueprint(admin_bp, url_prefix="/api")
     app.register_blueprint(memory_bp, url_prefix="/api")
     app.register_blueprint(feedback_bp, url_prefix="/api")
+    app.register_blueprint(collections_bp, url_prefix="/api")
+    app.register_blueprint(search_bp, url_prefix="/api")
     app.register_blueprint(persona_bp)
     app.register_blueprint(web_bp)
     app.extensions["job_manager"] = PersistentJobManager(app)

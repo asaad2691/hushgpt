@@ -133,6 +133,7 @@ async function streamChat(prompt) {
       history,
       use_web: settings.useWeb,
       deep_web: settings.deepWeb,
+      collection_ids: settings.selectedCollectionId ? [Number(settings.selectedCollectionId)] : [],
       provider_override: settings.providerOverride,
       model_override: settings.modelOverride,
       response_preset: settings.responsePreset,

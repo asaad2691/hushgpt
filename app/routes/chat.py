@@ -4,7 +4,7 @@ from flask import Blueprint, Response, current_app, jsonify, request, stream_wit
 
 from app.auth import get_current_user, require_api_key
 from app.extensions import db
-from app.models import Conversation, MemoryItem, Message
+from app.models import CollectionAsset, KnowledgeCollection, Conversation, MemoryItem, Message
 from app.services.llm_provider import get_active_model_name, get_client
 from app.services.vector_store import VectorStoreService
 from app.services.web_search import WebSearchService
@@ -224,7 +224,7 @@ def _preset_instruction(preset):
     return "Balance clarity and brevity. Give direct answers first, then useful detail when needed."
 
 
-def build_messages(user_text, conversation_id=None, history=None, web_context=None, preset=None):
+def build_messages(user_text, conversation_id=None, history=None, web_context=None, preset=None, collection_ids=None):
     system_prompt = current_app.config["SYSTEM_PROMPT"]
     brevity_rule = (
         "Default to concise, direct answers. "
@@ -290,9 +290,32 @@ def build_messages(user_text, conversation_id=None, history=None, web_context=No
             }
         )
 
+    if collection_ids:
+        active_collections = (
+            KnowledgeCollection.query.filter(
+                KnowledgeCollection.client_id == _client_id(),
+                KnowledgeCollection.id.in_(collection_ids),
+            )
+            .order_by(KnowledgeCollection.updated_at.desc(), KnowledgeCollection.id.desc())
+            .all()
+        )
+        if active_collections:
+            collection_labels = ", ".join(row.name for row in active_collections[:6])
+            messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "The user selected active knowledge base collections for this message. "
+                        "Prefer those collections when they contain relevant information.\n\n"
+                        f"Active collections: {collection_labels}"
+                    ),
+                }
+            )
+
     recent_rows = _recent_history_rows(conversation_id)
     conversation_history = [{"role": row.role, "content": row.content} for row in recent_rows]
-    if conversation_history:
+    should_search_vectors = bool(conversation_history or collection_ids)
+    if should_search_vectors:
         vector_store = VectorStoreService(current_app.config)
         relevant = vector_store.search(
             _client_id(),
@@ -301,11 +324,28 @@ def build_messages(user_text, conversation_id=None, history=None, web_context=No
             source_types=["conversation-message", "file-chunk"],
             conversation_id=conversation_id,
         )
+        if collection_ids:
+            collection_relevant = vector_store.search(
+                _client_id(),
+                user_text,
+                top_k=max(2, min(4, len(collection_ids) + 1)),
+                source_types=["collection-document"],
+                source_key_prefixes=[f"collection-{collection_id}-asset-" for collection_id in collection_ids],
+            )
+            relevant.extend(collection_relevant)
         if relevant:
             snippets = []
             for item in relevant:
                 label = item["source_type"].replace("-", " ").title()
                 title = item.get("title") or label
+                if item["source_type"] == "collection-document":
+                    asset = (
+                        CollectionAsset.query.filter_by(client_id=_client_id(), title=title)
+                        .order_by(CollectionAsset.id.desc())
+                        .first()
+                    )
+                    if asset is not None:
+                        title = f"{title} ({asset.source_type})"
                 snippets.append(f"[{title}] {item['text']}")
             messages.append(
                 {
@@ -317,6 +357,7 @@ def build_messages(user_text, conversation_id=None, history=None, web_context=No
                     ),
                 }
             )
+    if conversation_history:
         messages.extend(conversation_history)
     elif history:
         max_history = current_app.config["MAX_HISTORY_MESSAGES"]
@@ -336,6 +377,7 @@ def chat():
     use_web = bool(data.get("use_web"))
     deep_web = bool(data.get("deep_web"))
     preset = (data.get("response_preset") or "balanced").strip().lower()
+    collection_ids = [int(item) for item in (data.get("collection_ids") or []) if str(item).isdigit()]
     provider_override = (data.get("provider_override") or "").strip().lower() or None
     model_override = (data.get("model_override") or "").strip() or None
     options = _apply_default_generation_options(prompt, data.get("options") or {})
@@ -373,6 +415,7 @@ def chat():
                     "used_web": True,
                     "raw": {"kind": web_result.get("kind")},
                     "sources": sources,
+                    "collection_ids": collection_ids,
                 }
             )
         except Exception as exc:
@@ -385,6 +428,7 @@ def chat():
         history=history,
         web_context=web_context,
         preset=preset,
+        collection_ids=collection_ids,
     )
     client = get_client(provider=provider_override, model_name=model_override)
 
@@ -402,6 +446,7 @@ def chat():
                 "used_web": bool(web_context),
                 "raw": result,
                 "sources": sources,
+                "collection_ids": collection_ids,
             }
         )
     except Exception as exc:
@@ -419,6 +464,7 @@ def chat_stream():
     use_web = bool(data.get("use_web"))
     deep_web = bool(data.get("deep_web"))
     preset = (data.get("response_preset") or "balanced").strip().lower()
+    collection_ids = [int(item) for item in (data.get("collection_ids") or []) if str(item).isdigit()]
     provider_override = (data.get("provider_override") or "").strip().lower() or None
     model_override = (data.get("model_override") or "").strip() or None
     options = _apply_default_generation_options(prompt, data.get("options") or {})
@@ -451,6 +497,7 @@ def chat_stream():
         history=history,
         web_context=web_context,
         preset=preset,
+        collection_ids=collection_ids,
     )
     client = get_client(provider=provider_override, model_name=model_override)
 
@@ -465,6 +512,7 @@ def chat_stream():
                         "conversation_id": conv.id,
                         "model": get_active_model_name(provider_override, model_override),
                         "provider": provider_override or current_app.config["MODEL_PROVIDER"],
+                        "collection_ids": collection_ids,
                     }
                 )
                 + "\n\n"

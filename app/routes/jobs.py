@@ -132,6 +132,7 @@ def queue_file_analyze():
             "prompt": prompt,
             "file_base64": base64.b64encode(file_bytes).decode("ascii"),
             "conversation_id": request.form.get("conversation_id", type=int),
+            "collection_id": request.form.get("collection_id", type=int),
             "client_id": client_id,
         },
     )

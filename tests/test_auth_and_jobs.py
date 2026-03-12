@@ -29,6 +29,7 @@ class BaseTestCase(unittest.TestCase):
         with self.app.app_context():
             db.session.remove()
             db.drop_all()
+            db.engine.dispose()
         if os.path.exists(self.db_path):
             os.unlink(self.db_path)
 

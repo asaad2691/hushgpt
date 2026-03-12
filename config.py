@@ -116,3 +116,9 @@ class Config:
         "yes",
         "on",
     }
+    AUTO_CREATE_SCHEMA = os.getenv("AUTO_CREATE_SCHEMA", "true").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }

@@ -92,3 +92,27 @@ class MessageFeedback(db.Model):
     rating = db.Column(db.String(20), nullable=False, index=True)
     note = db.Column(db.Text, nullable=False, default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class KnowledgeCollection(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.String(64), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True, index=True)
+    name = db.Column(db.String(160), nullable=False, index=True)
+    description = db.Column(db.Text, nullable=False, default="")
+    shared = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CollectionAsset(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    collection_id = db.Column(db.Integer, db.ForeignKey("knowledge_collection.id"), nullable=False, index=True)
+    client_id = db.Column(db.String(64), nullable=False, index=True)
+    source_type = db.Column(db.String(40), nullable=False, index=True)
+    title = db.Column(db.String(220), nullable=False, default="")
+    source_ref = db.Column(db.String(500), nullable=False, default="")
+    text_content = db.Column(db.Text, nullable=False, default="")
+    preview = db.Column(db.Text, nullable=False, default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

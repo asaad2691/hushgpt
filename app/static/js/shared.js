@@ -22,6 +22,8 @@ const retryChatBtn = document.getElementById("retry-chat-btn");
 const duplicateChatBtn = document.getElementById("duplicate-chat-btn");
 const branchChatBtn = document.getElementById("branch-chat-btn");
 const pinChatBtn = document.getElementById("pin-chat-btn");
+const commandBtn = document.getElementById("command-btn");
+const collectionsBtn = document.getElementById("collections-btn");
 const renameChatBtn = document.getElementById("rename-chat-btn");
 const exportChatBtn = document.getElementById("export-chat-btn");
 const deleteChatBtn = document.getElementById("delete-chat-btn");
@@ -29,6 +31,7 @@ const template = document.getElementById("message-template");
 const emojiBtn = document.getElementById("emoji-btn");
 const emojiStrip = document.getElementById("emoji-strip");
 const chatModeEl = document.getElementById("chat-mode");
+const collectionSelectEl = document.getElementById("collection-select");
 const imageReaderFile = document.getElementById("image-reader-file");
 const fileInput = document.getElementById("file-input");
 const fileInputSecondary = document.getElementById("file-input-secondary");
@@ -87,6 +90,22 @@ const statusChatModalEl = document.getElementById("status-chat-modal");
 const statusImageModalEl = document.getElementById("status-image-modal");
 const statusOcrModalEl = document.getElementById("status-ocr-modal");
 const statusPresetModalEl = document.getElementById("status-preset-modal");
+const collectionsListEl = document.getElementById("collections-list");
+const collectionAssetsEl = document.getElementById("collection-assets");
+const selectedCollectionSummaryEl = document.getElementById("selected-collection-summary");
+const collectionNameEl = document.getElementById("collection-name");
+const collectionDescriptionEl = document.getElementById("collection-description");
+const createCollectionBtn = document.getElementById("create-collection-btn");
+const collectionFileInputEl = document.getElementById("collection-file-input");
+const ingestCollectionFilesBtn = document.getElementById("ingest-collection-files-btn");
+const collectionWebsiteUrlEl = document.getElementById("collection-website-url");
+const ingestCollectionWebsiteBtn = document.getElementById("ingest-collection-website-btn");
+const reindexCollectionBtn = document.getElementById("reindex-collection-btn");
+const clearCollectionBtn = document.getElementById("clear-collection-btn");
+const deleteCollectionBtn = document.getElementById("delete-collection-btn");
+const commandInputEl = document.getElementById("command-input");
+const commandResultsEl = document.getElementById("command-results");
+const commandModalEl = document.getElementById("command-modal");
 
 let activeConversationId = null;
 let history = [];
@@ -100,6 +119,8 @@ let availableVoices = [];
 let authToken = localStorage.getItem("ai.authToken") || "";
 let currentUsername = localStorage.getItem("ai.username") || "";
 let modelCatalog = null;
+let knowledgeCollections = [];
+let selectedCollection = null;
 
 const settings = {
   providerOverride: localStorage.getItem("ai.providerOverride") || modelProvider,
@@ -122,6 +143,7 @@ const settings = {
   doSample: localStorage.getItem("ai.doSample")
     ? localStorage.getItem("ai.doSample") === "true"
     : defaultDoSample,
+  selectedCollectionId: localStorage.getItem("ai.selectedCollectionId") || "",
 };
 
 function getClientId() {
@@ -163,6 +185,7 @@ function saveSettings() {
   localStorage.setItem("ai.topP", String(settings.topP));
   localStorage.setItem("ai.sendOnEnter", String(settings.sendOnEnter));
   localStorage.setItem("ai.doSample", String(settings.doSample));
+  localStorage.setItem("ai.selectedCollectionId", settings.selectedCollectionId || "");
 }
 
 function populateVoiceOptions() {
@@ -208,6 +231,7 @@ function applySettingsToUI() {
   if (statusPresetModalEl) statusPresetModalEl.textContent = presetLabel;
   if (sendOnEnterToggleEl) sendOnEnterToggleEl.checked = settings.sendOnEnter;
   if (sendOnEnterToggleModalEl) sendOnEnterToggleModalEl.checked = settings.sendOnEnter;
+  if (collectionSelectEl) collectionSelectEl.value = settings.selectedCollectionId || "";
   populateVoiceOptions();
   populateModelOptions();
 }
@@ -393,7 +417,12 @@ function updateToolContext() {
     "file-generate": "File Generate: describe the target file and output format.",
     "file-convert": "File Convert: upload one file and choose the format to convert into.",
   };
-  toolContextEl.textContent = mapping[chatModeEl?.value || "chat"] || mapping.chat;
+  const base = mapping[chatModeEl?.value || "chat"] || mapping.chat;
+  if (selectedCollection?.name) {
+    toolContextEl.textContent = `${base} Active collection: ${selectedCollection.name}.`;
+    return;
+  }
+  toolContextEl.textContent = base;
 }
 
 function renderAttachmentTray() {

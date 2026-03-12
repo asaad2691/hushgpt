@@ -63,6 +63,8 @@
             <div class="topbar-actions">
               <button id="retry-chat-btn" class="btn btn-sm btn-outline-info topbar-btn" type="button">Retry</button>
               <button id="pin-chat-btn" class="btn btn-sm btn-outline-warning topbar-btn" type="button">Pin</button>
+              <button id="command-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="modal" data-bs-target="#command-modal">Command</button>
+              <button id="collections-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#collections-drawer">Collections</button>
               <button id="templates-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#templates-drawer">Templates</button>
               <button id="jobs-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#jobs-drawer">Jobs</button>
 
@@ -180,6 +182,9 @@
               <option value="file-generate">File Generate</option>
               <option value="file-convert">File Convert</option>
             </select>
+            <select id="collection-select" class="form-select form-select-sm mode-select">
+              <option value="">No collection</option>
+            </select>
             <input id="image-reader-file" type="file" class="form-control form-control-sm mode-file d-none" accept="image/*">
             <input id="file-input" type="file" class="form-control form-control-sm mode-file d-none" accept=".pdf,.md,.txt,.docx,.csv,.html,.htm,.json">
             <input id="file-input-secondary" type="file" class="form-control form-control-sm mode-file d-none" accept=".pdf,.md,.txt,.docx,.csv,.html,.htm,.json">
@@ -275,6 +280,52 @@
     </div>
     <div class="offcanvas-body">
       <div id="prompt-templates" class="d-grid gap-2"></div>
+    </div>
+  </div>
+
+  <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="collections-drawer" aria-labelledby="collections-drawer-title">
+    <div class="offcanvas-header border-bottom border-secondary-subtle">
+      <div>
+        <h2 id="collections-drawer-title" class="fs-6 m-0">Knowledge Bases</h2>
+        <div class="small text-secondary">Collections for files, websites, and scoped retrieval.</div>
+      </div>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="drawer-section">
+        <div class="drawer-section-title">Create Collection</div>
+        <div class="d-grid gap-2">
+          <input id="collection-name" class="form-control form-control-sm" type="text" placeholder="Collection name">
+          <textarea id="collection-description" class="form-control form-control-sm" rows="2" placeholder="What this collection is for"></textarea>
+          <button id="create-collection-btn" class="btn btn-sm btn-primary" type="button">Create</button>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <div class="drawer-section-title">Selected Collection</div>
+        <div id="selected-collection-summary" class="small text-secondary">No collection selected.</div>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          <button id="reindex-collection-btn" class="btn btn-sm btn-outline-light" type="button">Reindex</button>
+          <button id="clear-collection-btn" class="btn btn-sm btn-outline-warning" type="button">Clear</button>
+          <button id="delete-collection-btn" class="btn btn-sm btn-outline-danger" type="button">Delete</button>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <div class="drawer-section-title">Ingest Into Selected</div>
+        <div class="d-grid gap-2">
+          <input id="collection-file-input" type="file" class="form-control form-control-sm" multiple accept=".pdf,.md,.txt,.docx,.csv,.html,.htm,.json">
+          <button id="ingest-collection-files-btn" class="btn btn-sm btn-outline-light" type="button">Upload Files</button>
+          <input id="collection-website-url" class="form-control form-control-sm" type="url" placeholder="https://example.com/article">
+          <button id="ingest-collection-website-btn" class="btn btn-sm btn-outline-light" type="button">Ingest Website</button>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <div class="drawer-section-title">Collections</div>
+        <div id="collections-list" class="d-grid gap-2"></div>
+      </div>
+      <div class="drawer-section">
+        <div class="drawer-section-title">Assets</div>
+        <div id="collection-assets" class="d-grid gap-2"></div>
+      </div>
     </div>
   </div>
 
@@ -487,6 +538,24 @@
     </div>
   </div>
 
+  <div class="modal fade" id="command-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-secondary">
+          <div>
+            <h2 class="modal-title fs-6 m-0">Command Palette</h2>
+            <div class="small text-secondary">Open chats, collections, jobs, settings, and search results.</div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input id="command-input" class="form-control mb-3" type="search" placeholder="Search everything or type a command...">
+          <div id="command-results" class="d-grid gap-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container position-fixed top-0 end-0 p-3">
     <div id="app-toast" class="toast text-bg-dark border border-secondary-subtle" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="toast-header bg-transparent text-light border-secondary-subtle">
@@ -507,6 +576,7 @@
   <script src="{{ url_for('static', filename='js/files.js') }}"></script>
   <script src="{{ url_for('static', filename='js/voice.js') }}"></script>
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/collections.js') }}"></script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
