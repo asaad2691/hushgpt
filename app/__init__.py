@@ -79,8 +79,8 @@ def _register_job_handlers(app, manager):
         result = service.generate(
             payload["prompt"],
             negative_prompt=payload.get("negative_prompt"),
-            guidance_scale=7.0,
-            num_inference_steps=30,
+            guidance_scale=8.0,
+            num_inference_steps=36,
         )
         image_url = f"/static/generated/{result['filename']}"
         db.session.add(Message(conversation_id=conv.id, role="user", content=f"[Image Generate] {payload['prompt']}"))

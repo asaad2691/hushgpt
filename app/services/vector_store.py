@@ -66,6 +66,7 @@ class VectorStoreService:
                 {
                     "id": row.id,
                     "source_type": row.source_type,
+                    "source_key": row.source_key,
                     "title": row.title,
                     "text": row.text,
                     "conversation_id": row.conversation_id,

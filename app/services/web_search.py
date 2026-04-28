@@ -21,6 +21,7 @@ class WebSearchService:
             "current",
             "today",
             "news",
+            "headlines",
             "recent",
             "right now",
             "price",
@@ -37,6 +38,10 @@ class WebSearchService:
             "crypto",
             "who is",
             "what is happening",
+            "what's happening",
+            "whats happening",
+            "around the world",
+            "happening around the world",
             "look up",
             "search",
             "find online",
@@ -51,9 +56,33 @@ class WebSearchService:
             return "weather"
         if any(x in text for x in ["time", "date", "timezone", "what time"]):
             return "time"
-        if any(x in text for x in ["news", "headline", "breaking", "update", "world news", "global"]):
+        if any(x in text for x in ["news", "headline", "headlines", "breaking", "update", "world news", "global", "around the world", "what's happening"]):
             return "news"
         return "search"
+
+    def check_connectivity(self):
+        if not self.enabled:
+            return {"enabled": False, "connected": False, "ready": False}
+
+        probes = [
+            ("https://api.duckduckgo.com/", {"q": "ping", "format": "json", "no_html": "1"}),
+            ("https://en.wikipedia.org/w/rest.php/v1/search/title", {"q": "world", "limit": 1}),
+        ]
+
+        for url, params in probes:
+            try:
+                response = requests.get(
+                    url,
+                    params=params,
+                    timeout=min(self.timeout, 5),
+                    headers={"User-Agent": "local-flask-llm/1.0"},
+                )
+                response.raise_for_status()
+                return {"enabled": True, "connected": True, "ready": True}
+            except Exception:
+                continue
+
+        return {"enabled": True, "connected": False, "ready": False}
 
     def get_context(self, prompt, deep=False):
         if not self.enabled:

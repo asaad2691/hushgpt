@@ -28,6 +28,25 @@ function groupConversationLabel(createdAt) {
   return "Older";
 }
 
+function parseSseEvent(eventText) {
+  let eventName = "message";
+  const dataLines = [];
+
+  for (const line of eventText.split("\n")) {
+    if (line.startsWith("event:")) {
+      eventName = line.slice(6).trim();
+    } else if (line.startsWith("data:")) {
+      const value = line.slice(5);
+      dataLines.push(value.startsWith(" ") ? value.slice(1) : value);
+    }
+  }
+
+  return {
+    eventName,
+    eventData: dataLines.join("\n"),
+  };
+}
+
 async function loadConversations() {
   const query = (conversationSearchEl.value || "").trim();
   const url = query
@@ -123,6 +142,7 @@ async function streamChat(prompt) {
   const assistantMessage = addTypingIndicator();
   let assistantText = "";
   let messageSources = [];
+  const useWebForPrompt = isWebSearchReady() && (settings.useWeb || shouldPromptUseWeb(prompt));
 
   const response = await fetch("/api/chat/stream", {
     method: "POST",
@@ -131,8 +151,8 @@ async function streamChat(prompt) {
       prompt,
       conversation_id: activeConversationId,
       history,
-      use_web: settings.useWeb,
-      deep_web: settings.deepWeb,
+      use_web: useWebForPrompt,
+      deep_web: useWebForPrompt && settings.deepWeb,
       collection_ids: settings.selectedCollectionId ? [Number(settings.selectedCollectionId)] : [],
       provider_override: settings.providerOverride,
       model_override: settings.modelOverride,
@@ -162,15 +182,7 @@ async function streamChat(prompt) {
       const eventText = buffer.slice(0, idx);
       buffer = buffer.slice(idx + 2);
 
-      let eventName = "message";
-      let eventData = "";
-      for (const line of eventText.split("\n")) {
-        if (line.startsWith("event:")) {
-          eventName = line.replace("event:", "").trim();
-        } else if (line.startsWith("data:")) {
-          eventData += line.replace("data:", "");
-        }
-      }
+      const { eventName, eventData } = parseSseEvent(eventText);
 
       if (eventName === "meta") {
         try {

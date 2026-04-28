@@ -14,6 +14,7 @@ memory_bp = Blueprint("memory", __name__)
 def list_memory():
     scope = (request.args.get("scope") or "").strip().lower()
     conversation_id = request.args.get("conversation_id", type=int)
+    persona_profile_id = request.args.get("persona_profile_id", type=int)
     client_id = get_request_client_id()
     user = get_current_user()
     query = MemoryItem.query.filter_by(client_id=client_id)
@@ -23,6 +24,8 @@ def list_memory():
         query = query.filter_by(scope=scope)
     if conversation_id is not None:
         query = query.filter((MemoryItem.conversation_id == conversation_id) | (MemoryItem.conversation_id.is_(None)))
+    if persona_profile_id is not None:
+        query = query.filter((MemoryItem.persona_profile_id == persona_profile_id) | (MemoryItem.persona_profile_id.is_(None)))
     rows = query.order_by(MemoryItem.updated_at.desc(), MemoryItem.id.desc()).all()
     return jsonify(
         [
@@ -32,6 +35,7 @@ def list_memory():
                 "title": row.title,
                 "content": row.content,
                 "conversation_id": row.conversation_id,
+                "persona_profile_id": row.persona_profile_id,
                 "created_at": row.created_at.isoformat() + "Z",
                 "updated_at": row.updated_at.isoformat() + "Z",
             }
@@ -48,16 +52,18 @@ def save_memory():
     title = (data.get("title") or "").strip() or "Memory"
     scope = (data.get("scope") or "profile").strip().lower()
     conversation_id = data.get("conversation_id")
+    persona_profile_id = data.get("persona_profile_id")
     if not content:
         return jsonify({"error": "content is required"}), 400
-    if scope not in {"profile", "project", "conversation"}:
-        return jsonify({"error": "scope must be profile, project, or conversation"}), 400
+    if scope not in {"profile", "project", "conversation", "persona"}:
+        return jsonify({"error": "scope must be profile, project, conversation, or persona"}), 400
 
     user = get_current_user()
     row = MemoryItem(
         client_id=get_request_client_id(),
         user_id=getattr(user, "id", None),
         conversation_id=conversation_id,
+        persona_profile_id=persona_profile_id,
         scope=scope,
         title=title[:160],
         content=content,

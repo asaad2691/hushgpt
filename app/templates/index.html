@@ -1,177 +1,161 @@
 <!doctype html>
 <html lang="en" data-bs-theme="dark">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HushGPT</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/hushgpt-favicon.svg') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
-</head>
-<body
-  data-api-key="{{ api_key }}"
-  data-model="{{ model }}"
-  data-model-provider="{{ model_provider }}"
-  data-default-max-new-tokens="{{ default_max_new_tokens }}"
-  data-default-temperature="{{ default_temperature }}"
-  data-default-top-p="{{ default_top_p }}"
-  data-default-do-sample="{{ 'true' if default_do_sample else 'false' }}"
->
-  <div class="container-fluid p-0 app-bg">
-    <div class="row g-0 min-vh-100">
-      <aside id="chat-sidebar" class="collapse d-lg-block col-12 col-lg-3 border-end border-secondary-subtle sidebar p-3 p-lg-4">
-        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-          <div class="brand-stack">
-            <img
-              src="{{ url_for('static', filename='img/hushgpt-logo.svg') }}"
-              alt="HushGPT logo"
-              class="brand-logo"
-            >
-            <div class="small text-secondary brand-subtitle">Private AI workspace</div>
-          </div>
-          <span class="badge text-bg-dark border border-secondary-subtle">Live</span>
-        </div>
-        <button id="new-chat-btn" class="btn btn-primary w-100 mb-3">New Chat</button>
-        <div class="mb-3">
-          <input id="conversation-search" class="form-control form-control-sm conversation-search" type="search" placeholder="Search chats">
-        </div>
-        <div id="conversation-list" class="conversation-list d-grid gap-2"></div>
-      </aside>
 
-      <main class="col-12 col-lg-9 d-flex flex-column">
-        <header class="p-3 p-lg-4 border-bottom border-secondary-subtle glass">
-          <div class="topbar compact-bar mb-3">
-            <div class="d-flex align-items-center gap-2">
-              <button
-                class="btn btn-sm btn-outline-light d-lg-none"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#chat-sidebar"
-                aria-expanded="false"
-                aria-controls="chat-sidebar"
-              >
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HushGPT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/hushgpt-favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+
+<body data-api-key="{{ api_key }}" data-model="{{ model }}" data-model-provider="{{ model_provider }}" data-default-max-new-tokens="{{ default_max_new_tokens }}" data-default-temperature="{{ default_temperature }}" data-default-top-p="{{ default_top_p }}"
+    data-default-do-sample="{{ 'true' if default_do_sample else 'false' }}">
+    <div class="container-fluid p-0 app-bg">
+        <div class="row g-0 min-vh-100">
+            <aside id="chat-sidebar" class="collapse d-lg-block col-12 col-lg-3 border-end border-secondary-subtle sidebar p-3 p-lg-4">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+                    <div class="brand-stack">
+                        <img src="{{ url_for('static', filename='img/hushgpt-logo.svg') }}" alt="HushGPT logo" class="brand-logo">
+                        <div class="small text-secondary brand-subtitle">Private AI workspace</div>
+                    </div>
+                    <span class="badge text-bg-dark border border-secondary-subtle">Live</span>
+                </div>
+                <button id="new-chat-btn" class="btn btn-primary w-100 mb-3">New Chat</button>
+                <div class="mb-3">
+                    <input id="conversation-search" class="form-control form-control-sm conversation-search" type="search" placeholder="Search chats">
+                </div>
+                <div id="conversation-list" class="conversation-list d-grid gap-2"></div>
+            </aside>
+
+            <main class="col-12 col-lg-9 d-flex flex-column">
+                <header class="p-3 p-lg-4 border-bottom border-secondary-subtle glass">
+                    <div class="topbar compact-bar mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-light d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#chat-sidebar" aria-expanded="false" aria-controls="chat-sidebar">
                 Chats
               </button>
-              <div class="workspace-chip">
-                <span class="workspace-chip-label">Workspace</span>
-                <span id="model-name" class="workspace-chip-value"></span>
-              </div>
-            </div>
-            <div class="topbar-actions">
-              <button id="retry-chat-btn" class="btn btn-sm btn-outline-info topbar-btn" type="button">Retry</button>
-              <button id="pin-chat-btn" class="btn btn-sm btn-outline-warning topbar-btn" type="button">Pin</button>
-              <button id="command-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="modal" data-bs-target="#command-modal">Command</button>
-              <button id="collections-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#collections-drawer">Collections</button>
-              <button id="templates-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#templates-drawer">Templates</button>
-              <button id="jobs-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#jobs-drawer">Jobs</button>
+                            <div class="workspace-chip">
+                                <span class="workspace-chip-label">Workspace</span>
+                                <span id="model-name" class="workspace-chip-value"></span>
+                            </div>
+                        </div>
+                        <div class="topbar-actions">
+                            <button id="retry-chat-btn" class="btn btn-sm btn-outline-info topbar-btn" type="button">Retry</button>
+                            <button id="pin-chat-btn" class="btn btn-sm btn-outline-warning topbar-btn" type="button">Pin</button>
+                            <button id="command-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="modal" data-bs-target="#command-modal">Command</button>
+                            <button id="collections-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#collections-drawer">Collections</button>
+                            <button id="templates-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#templates-drawer">Templates</button>
+                            <button id="jobs-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#jobs-drawer">Jobs</button>
 
-              <div class="dropdown">
-                <button class="btn btn-sm btn-outline-light topbar-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-light topbar-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                   Actions
                 </button>
-                <div class="dropdown-menu dropdown-menu-end dropdown-menu-dark shadow-lg">
-                  <button id="duplicate-chat-btn" class="dropdown-item" type="button">Duplicate</button>
-                  <button id="branch-chat-btn" class="dropdown-item" type="button">Branch</button>
-                  <button id="rename-chat-btn" class="dropdown-item" type="button">Rename</button>
-                  <button id="memory-btn" class="dropdown-item" type="button" data-bs-toggle="offcanvas" data-bs-target="#memory-drawer">Memory</button>
-                  <button id="export-chat-btn" class="dropdown-item" type="button">Export</button>
-                  <button id="delete-chat-btn" class="dropdown-item text-danger" type="button">Delete</button>
-                </div>
-              </div>
+                                <div class="dropdown-menu dropdown-menu-end dropdown-menu-dark shadow-lg">
+                                    <button id="duplicate-chat-btn" class="dropdown-item" type="button">Duplicate</button>
+                                    <button id="branch-chat-btn" class="dropdown-item" type="button">Branch</button>
+                                    <button id="rename-chat-btn" class="dropdown-item" type="button">Rename</button>
+                                    <button id="memory-btn" class="dropdown-item" type="button" data-bs-toggle="offcanvas" data-bs-target="#memory-drawer">Memory</button>
+                                    <button id="export-chat-btn" class="dropdown-item" type="button">Export</button>
+                                    <button id="delete-chat-btn" class="dropdown-item text-danger" type="button">Delete</button>
+                                </div>
+                            </div>
 
-              <div class="dropdown">
-                <button class="btn btn-sm btn-outline-light topbar-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-light topbar-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                   Voice
                 </button>
-                <div class="dropdown-menu dropdown-menu-end dropdown-menu-dark shadow-lg">
-                  <button id="mic-btn" class="dropdown-item" type="button">Mic</button>
-                  <button id="voice-chat-btn" class="dropdown-item" type="button">Voice Chat</button>
-                  <button id="voice-stop-btn" class="dropdown-item d-none" type="button">Stop</button>
-                </div>
-              </div>
+                                <div class="dropdown-menu dropdown-menu-end dropdown-menu-dark shadow-lg">
+                                    <button id="mic-btn" class="dropdown-item" type="button">Mic</button>
+                                    <button id="voice-chat-btn" class="dropdown-item" type="button">Voice Chat</button>
+                                    <button id="voice-stop-btn" class="dropdown-item d-none" type="button">Stop</button>
+                                </div>
+                            </div>
 
-              <button id="account-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="modal" data-bs-target="#auth-modal">Account</button>
-              <button id="settings-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="modal" data-bs-target="#settings-modal">Settings</button>
-              <a class="btn btn-sm btn-outline-light topbar-btn" href="/persona">Persona</a>
-              <button id="help-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#help-drawer">Help</button>
-            </div>
-          </div>
-          <div class="hero-shell compact-hero">
-            <div class="hero-main">
-              <div class="eyebrow">Model Workspace</div>
-              <div class="hero-title-row">
-                <div class="fw-semibold hero-title" id="hero-model-name"></div>
-                <div class="hero-badges">
-                  <span id="provider-badge" class="badge text-bg-dark border border-secondary-subtle"></span>
-                  <span class="badge text-bg-dark border border-secondary-subtle">History memory</span>
-                  <span class="badge text-bg-dark border border-secondary-subtle">Source-aware</span>
-                  <span id="auth-state-badge" class="badge text-bg-dark border border-secondary-subtle">Guest</span>
-                </div>
-              </div>
-              <div class="small text-secondary hero-summary">Chat, files, image analysis, image editing, generation, voice, web lookup, jobs, compare tools, and account-aware sessions in one thread.</div>
-              <div class="quick-actions mt-2">
-                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/fast Summarize this directly">Direct</button>
-                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/detail Explain this step by step">Detailed</button>
-                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/code Review this code and fix the issue">Code</button>
-                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/web Latest updates with sources">Web</button>
-              </div>
-            </div>
-            <div class="hero-side">
-              <div class="status-strip">
-                <div id="status-grid" class="status-strip-grid">
-                  <button class="status-mini" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">
+                            <button id="account-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="modal" data-bs-target="#auth-modal">Account</button>
+                            <button id="settings-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="modal" data-bs-target="#settings-modal">Settings</button>
+                            <a class="btn btn-sm btn-outline-light topbar-btn" href="/persona">Persona</a>
+                            <button id="help-btn" class="btn btn-sm btn-outline-light topbar-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#help-drawer">Help</button>
+                        </div>
+                    </div>
+                    <div class="hero-shell compact-hero">
+                        <div class="hero-main">
+                            <div class="eyebrow">Model Workspace</div>
+                            <div class="hero-title-row">
+                                <div class="fw-semibold hero-title" id="hero-model-name"></div>
+                                <div class="hero-badges">
+                                    <span id="provider-badge" class="badge text-bg-dark border border-secondary-subtle"></span>
+                                    <span class="badge text-bg-dark border border-secondary-subtle">History memory</span>
+                                    <span class="badge text-bg-dark border border-secondary-subtle">Source-aware</span>
+                                    <span id="auth-state-badge" class="badge text-bg-dark border border-secondary-subtle">Guest</span>
+                                </div>
+                            </div>
+                            <div class="small text-secondary hero-summary">Chat, files, image analysis, image editing, generation, voice, web lookup, jobs, compare tools, and account-aware sessions in one thread.</div>
+                            <div class="quick-actions mt-2">
+                                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/fast Summarize this directly">Direct</button>
+                                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/detail Explain this step by step">Detailed</button>
+                                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/code Review this code and fix the issue">Code</button>
+                                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/web Latest updates with sources">Web</button>
+                            </div>
+                        </div>
+                        <div class="hero-side">
+                            <div class="status-strip">
+                                <div id="status-grid" class="status-strip-grid">
+                                    <button class="status-mini" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">
                     <span class="status-chip-label">Chat</span>
                     <span id="status-chat" class="status-chip-value">Ready</span>
                   </button>
-                  <button class="status-mini" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">
+                                    <button class="status-mini" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">
                     <span class="status-chip-label">Image</span>
                     <span id="status-image" class="status-chip-value">Checking</span>
                   </button>
-                  <button class="status-mini" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">
+                                    <button class="status-mini" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">
                     <span class="status-chip-label">OCR</span>
                     <span id="status-ocr" class="status-chip-value">Checking</span>
                   </button>
-                  <button class="status-mini" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">
+                                    <button class="status-mini" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">
                     <span class="status-chip-label">Preset</span>
                     <span id="status-preset" class="status-chip-value">Balanced</span>
                   </button>
-                </div>
-                <button id="open-status-btn" class="btn btn-sm btn-outline-light status-open-btn" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">Details</button>
-              </div>
-            </div>
-          </div>
-        </header>
+                                </div>
+                                <button id="open-status-btn" class="btn btn-sm btn-outline-light status-open-btn" type="button" data-bs-toggle="modal" data-bs-target="#status-modal">Details</button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
 
-        <section id="messages" class="messages flex-grow-1 p-3 p-lg-4">
-          <div id="empty-state" class="empty-state">
-            <div class="empty-state-panel">
-              <div class="eyebrow">Start Here</div>
-              <h2 class="empty-title">Ask directly. Use detail only when you need it.</h2>
-              <p class="text-secondary mb-3">This workspace already supports chat, jobs, web updates, file compare, OCR image analysis, image editing, generation, and voice chat.</p>
-              <div class="empty-suggestions">
-                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="Summarize this file for me">Summarize a file</button>
-                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/web Latest tech news with sources">Check live updates</button>
-                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/code Review this traceback and fix it">Debug code</button>
-              </div>
-            </div>
-          </div>
-        </section>
+                <section id="messages" class="messages flex-grow-1 p-3 p-lg-4">
+                    <div id="empty-state" class="empty-state">
+                        <div class="empty-state-panel">
+                            <div class="eyebrow">Start Here</div>
+                            <h2 class="empty-title">Ask directly. Use detail only when you need it.</h2>
+                            <p class="text-secondary mb-3">This workspace already supports chat, jobs, web updates, file compare, OCR image analysis, image editing, generation, and voice chat.</p>
+                            <div class="empty-suggestions">
+                                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="Summarize this file for me">Summarize a file</button>
+                                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/web Latest tech news with sources">Check live updates</button>
+                                <button class="btn btn-sm quick-action" type="button" data-quick-prompt="/code Review this traceback and fix it">Debug code</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-        <section class="p-3 border-top border-secondary-subtle composer-wrap">
-          <div class="composer-head">
-            <div id="tool-context" class="tool-context">Chat: ask anything directly. Use detail only when needed.</div>
-            <div class="composer-head-actions">
-              <label class="form-check form-switch send-enter-toggle">
+                <section class="p-3 border-top border-secondary-subtle composer-wrap">
+                    <div class="composer-head">
+                        <div id="tool-context" class="tool-context">Chat: ask anything directly. Use detail only when needed.</div>
+                        <div class="composer-head-actions">
+                            <label class="form-check form-switch send-enter-toggle">
                 <input id="send-on-enter-toggle" class="form-check-input" type="checkbox">
                 <span class="small text-secondary">Send on Enter</span>
               </label>
-            </div>
-          </div>
-          <div class="d-flex flex-wrap gap-2 mb-2">
-            <select id="chat-mode" class="form-select form-select-sm mode-select">
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        <select id="chat-mode" class="form-select form-select-sm mode-select">
               <option value="chat" selected>Chat</option>
               <option value="analyze">Image Analyze</option>
               <option value="edit">Image Edit</option>
@@ -182,20 +166,20 @@
               <option value="file-generate">File Generate</option>
               <option value="file-convert">File Convert</option>
             </select>
-            <select id="collection-select" class="form-select form-select-sm mode-select">
+                        <select id="collection-select" class="form-select form-select-sm mode-select">
               <option value="">No collection</option>
             </select>
-            <input id="image-reader-file" type="file" class="form-control form-control-sm mode-file d-none" accept="image/*">
-            <input id="file-input" type="file" class="form-control form-control-sm mode-file d-none" accept=".pdf,.md,.txt,.docx,.csv,.html,.htm,.json">
-            <input id="file-input-secondary" type="file" class="form-control form-control-sm mode-file d-none" accept=".pdf,.md,.txt,.docx,.csv,.html,.htm,.json">
-            <select id="parser-select" class="form-select form-select-sm mode-select d-none">
+                        <input id="image-reader-file" type="file" class="form-control form-control-sm mode-file d-none" accept="image/*">
+                        <input id="file-input" type="file" class="form-control form-control-sm mode-file d-none" accept=".pdf,.md,.txt,.docx,.csv,.html,.htm,.json">
+                        <input id="file-input-secondary" type="file" class="form-control form-control-sm mode-file d-none" accept=".pdf,.md,.txt,.docx,.csv,.html,.htm,.json">
+                        <select id="parser-select" class="form-select form-select-sm mode-select d-none">
               <option value="table">Table Extract</option>
               <option value="resume">Resume Parse</option>
               <option value="invoice">Invoice Parse</option>
               <option value="contract">Contract Review</option>
               <option value="section-summary">Section Summary</option>
             </select>
-            <select id="file-format" class="form-select form-select-sm mode-select d-none">
+                        <select id="file-format" class="form-select form-select-sm mode-select d-none">
               <option value="pdf">PDF</option>
               <option value="md">MD</option>
               <option value="docx">DOCX</option>
@@ -204,33 +188,33 @@
               <option value="txt">TXT</option>
               <option value="json">JSON</option>
             </select>
-          </div>
-          <div id="attachment-tray" class="attachment-tray d-none"></div>
-          <div id="drop-zone" class="drop-zone d-none">Drop image or file here to attach it.</div>
-          <div id="slash-hint" class="slash-hint d-none">Slash commands: `/web`, `/noweb`, `/fast`, `/balanced`, `/detail`, `/code`</div>
+                    </div>
+                    <div id="attachment-tray" class="attachment-tray d-none"></div>
+                    <div id="drop-zone" class="drop-zone d-none">Drop image or file here to attach it.</div>
+                    <div id="slash-hint" class="slash-hint d-none">Slash commands: `/web`, `/noweb`, `/fast`, `/balanced`, `/detail`, `/code`</div>
 
-          <form id="chat-form" class="d-flex gap-2 align-items-end">
-            <div class="input-group">
-              <button id="emoji-btn" class="btn btn-outline-secondary" type="button" aria-label="Emoji">&#128512;</button>
-              <textarea id="prompt" class="form-control chat-input" placeholder="Message HushGPT..." rows="1" required></textarea>
-              <button class="btn btn-primary px-4" type="submit">Send</button>
-            </div>
-          </form>
-          <div id="emoji-strip" class="emoji-strip d-none mt-2">
-            <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#128512;</button>
-            <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#128293;</button>
-            <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#127919;</button>
-            <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#128640;</button>
-            <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#9989;</button>
-            <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#129302;</button>
-          </div>
-          <div class="composer-note small text-secondary mt-2">Tip: ask short for direct answers, or explicitly ask for detail, code, sources, or comparison when needed.</div>
-        </section>
-      </main>
+                    <form id="chat-form" class="d-flex gap-2 align-items-end">
+                        <div class="input-group">
+                            <button id="emoji-btn" class="btn btn-outline-secondary" type="button" aria-label="Emoji">&#128512;</button>
+                            <textarea id="prompt" class="form-control chat-input" placeholder="Message HushGPT..." rows="1" required></textarea>
+                            <button class="btn btn-primary px-4" type="submit">Send</button>
+                        </div>
+                    </form>
+                    <div id="emoji-strip" class="emoji-strip d-none mt-2">
+                        <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#128512;</button>
+                        <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#128293;</button>
+                        <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#127919;</button>
+                        <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#128640;</button>
+                        <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#9989;</button>
+                        <button class="btn btn-sm btn-outline-secondary emoji-item" type="button">&#129302;</button>
+                    </div>
+                    <div class="composer-note small text-secondary mt-2">Tip: ask short for direct answers, or explicitly ask for detail, code, sources, or comparison when needed.</div>
+                </section>
+            </main>
+        </div>
     </div>
-  </div>
 
-  <template id="message-template">
+    <template id="message-template">
     <article class="message-card p-3">
       <div class="message-top d-flex align-items-center justify-content-between gap-2 mb-1">
         <div class="role text-uppercase small"></div>
@@ -241,7 +225,7 @@
     </article>
   </template>
 
-  <template id="jobs-item-template">
+    <template id="jobs-item-template">
     <div class="job-row">
       <div class="job-row-top">
         <div>
@@ -257,326 +241,327 @@
     </div>
   </template>
 
-  <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="jobs-drawer" aria-labelledby="jobs-drawer-title">
-    <div class="offcanvas-header border-bottom border-secondary-subtle">
-      <div>
-        <h2 id="jobs-drawer-title" class="fs-6 m-0">Jobs</h2>
-        <div class="small text-secondary">Queued, running, and recent heavy tasks.</div>
-      </div>
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-      <div id="jobs-list" class="d-grid gap-3"></div>
-    </div>
-  </div>
-
-  <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="templates-drawer" aria-labelledby="templates-drawer-title">
-    <div class="offcanvas-header border-bottom border-secondary-subtle">
-      <div>
-        <h2 id="templates-drawer-title" class="fs-6 m-0">Prompt Library</h2>
-        <div class="small text-secondary">Reusable prompts for common tasks.</div>
-      </div>
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-      <div id="prompt-templates" class="d-grid gap-2"></div>
-    </div>
-  </div>
-
-  <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="collections-drawer" aria-labelledby="collections-drawer-title">
-    <div class="offcanvas-header border-bottom border-secondary-subtle">
-      <div>
-        <h2 id="collections-drawer-title" class="fs-6 m-0">Knowledge Bases</h2>
-        <div class="small text-secondary">Collections for files, websites, and scoped retrieval.</div>
-      </div>
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-      <div class="drawer-section">
-        <div class="drawer-section-title">Create Collection</div>
-        <div class="d-grid gap-2">
-          <input id="collection-name" class="form-control form-control-sm" type="text" placeholder="Collection name">
-          <textarea id="collection-description" class="form-control form-control-sm" rows="2" placeholder="What this collection is for"></textarea>
-          <button id="create-collection-btn" class="btn btn-sm btn-primary" type="button">Create</button>
+    <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="jobs-drawer" aria-labelledby="jobs-drawer-title">
+        <div class="offcanvas-header border-bottom border-secondary-subtle">
+            <div>
+                <h2 id="jobs-drawer-title" class="fs-6 m-0">Jobs</h2>
+                <div class="small text-secondary">Queued, running, and recent heavy tasks.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-      </div>
-      <div class="drawer-section">
-        <div class="drawer-section-title">Selected Collection</div>
-        <div id="selected-collection-summary" class="small text-secondary">No collection selected.</div>
-        <div class="d-flex flex-wrap gap-2 mt-2">
-          <button id="reindex-collection-btn" class="btn btn-sm btn-outline-light" type="button">Reindex</button>
-          <button id="clear-collection-btn" class="btn btn-sm btn-outline-warning" type="button">Clear</button>
-          <button id="delete-collection-btn" class="btn btn-sm btn-outline-danger" type="button">Delete</button>
+        <div class="offcanvas-body">
+            <div id="jobs-list" class="d-grid gap-3"></div>
         </div>
-      </div>
-      <div class="drawer-section">
-        <div class="drawer-section-title">Ingest Into Selected</div>
-        <div class="d-grid gap-2">
-          <input id="collection-file-input" type="file" class="form-control form-control-sm" multiple accept=".pdf,.md,.txt,.docx,.csv,.html,.htm,.json">
-          <button id="ingest-collection-files-btn" class="btn btn-sm btn-outline-light" type="button">Upload Files</button>
-          <input id="collection-website-url" class="form-control form-control-sm" type="url" placeholder="https://example.com/article">
-          <button id="ingest-collection-website-btn" class="btn btn-sm btn-outline-light" type="button">Ingest Website</button>
-        </div>
-      </div>
-      <div class="drawer-section">
-        <div class="drawer-section-title">Collections</div>
-        <div id="collections-list" class="d-grid gap-2"></div>
-      </div>
-      <div class="drawer-section">
-        <div class="drawer-section-title">Assets</div>
-        <div id="collection-assets" class="d-grid gap-2"></div>
-      </div>
     </div>
-  </div>
 
-  <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="memory-drawer" aria-labelledby="memory-drawer-title">
-    <div class="offcanvas-header border-bottom border-secondary-subtle">
-      <div>
-        <h2 id="memory-drawer-title" class="fs-6 m-0">Saved Memory</h2>
-        <div class="small text-secondary">Profile, project, and conversation memory.</div>
-      </div>
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="templates-drawer" aria-labelledby="templates-drawer-title">
+        <div class="offcanvas-header border-bottom border-secondary-subtle">
+            <div>
+                <h2 id="templates-drawer-title" class="fs-6 m-0">Prompt Library</h2>
+                <div class="small text-secondary">Reusable prompts for common tasks.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div id="prompt-templates" class="d-grid gap-2"></div>
+        </div>
     </div>
-    <div class="offcanvas-body">
-      <div class="mb-3">
-        <select id="memory-scope-filter" class="form-select form-select-sm">
+
+    <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="collections-drawer" aria-labelledby="collections-drawer-title">
+        <div class="offcanvas-header border-bottom border-secondary-subtle">
+            <div>
+                <h2 id="collections-drawer-title" class="fs-6 m-0">Knowledge Bases</h2>
+                <div class="small text-secondary">Collections for files, websites, and scoped retrieval.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="drawer-section">
+                <div class="drawer-section-title">Create Collection</div>
+                <div class="d-grid gap-2">
+                    <input id="collection-name" class="form-control form-control-sm" type="text" placeholder="Collection name">
+                    <textarea id="collection-description" class="form-control form-control-sm" rows="2" placeholder="What this collection is for"></textarea>
+                    <button id="create-collection-btn" class="btn btn-sm btn-primary" type="button">Create</button>
+                </div>
+            </div>
+            <div class="drawer-section">
+                <div class="drawer-section-title">Selected Collection</div>
+                <div id="selected-collection-summary" class="small text-secondary">No collection selected.</div>
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                    <button id="reindex-collection-btn" class="btn btn-sm btn-outline-light" type="button">Reindex</button>
+                    <button id="clear-collection-btn" class="btn btn-sm btn-outline-warning" type="button">Clear</button>
+                    <button id="delete-collection-btn" class="btn btn-sm btn-outline-danger" type="button">Delete</button>
+                </div>
+            </div>
+            <div class="drawer-section">
+                <div class="drawer-section-title">Ingest Into Selected</div>
+                <div class="d-grid gap-2">
+                    <input id="collection-file-input" type="file" class="form-control form-control-sm" multiple accept=".pdf,.md,.txt,.docx,.csv,.html,.htm,.json">
+                    <button id="ingest-collection-files-btn" class="btn btn-sm btn-outline-light" type="button">Upload Files</button>
+                    <input id="collection-website-url" class="form-control form-control-sm" type="url" placeholder="https://example.com/article">
+                    <button id="ingest-collection-website-btn" class="btn btn-sm btn-outline-light" type="button">Ingest Website</button>
+                </div>
+            </div>
+            <div class="drawer-section">
+                <div class="drawer-section-title">Collections</div>
+                <div id="collections-list" class="d-grid gap-2"></div>
+            </div>
+            <div class="drawer-section">
+                <div class="drawer-section-title">Assets</div>
+                <div id="collection-assets" class="d-grid gap-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="memory-drawer" aria-labelledby="memory-drawer-title">
+        <div class="offcanvas-header border-bottom border-secondary-subtle">
+            <div>
+                <h2 id="memory-drawer-title" class="fs-6 m-0">Saved Memory</h2>
+                <div class="small text-secondary">Profile, project, and conversation memory.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mb-3">
+                <select id="memory-scope-filter" class="form-select form-select-sm">
           <option value="">All scopes</option>
           <option value="profile">Profile</option>
           <option value="project">Project</option>
           <option value="conversation">Conversation</option>
         </select>
-      </div>
-      <div id="memory-list" class="d-grid gap-2"></div>
-    </div>
-  </div>
-
-  <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="help-drawer" aria-labelledby="help-drawer-title">
-    <div class="offcanvas-header border-bottom border-secondary-subtle">
-      <div>
-        <h2 id="help-drawer-title" class="fs-6 m-0">Workspace Help</h2>
-        <div class="small text-secondary">Modes, files, web usage, and jobs.</div>
-      </div>
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body">
-      <div id="help-content" class="small text-secondary">
-        <p class="mb-3">Use chat for normal questions. Use image or file modes only when an attachment is required. Heavy image and file tasks can run as background jobs.</p>
-        <ul class="help-list">
-          <li><strong>Chat:</strong> normal questions, coding help, web-assisted answers.</li>
-          <li><strong>Image Analyze:</strong> upload one image and ask what to extract.</li>
-          <li><strong>Image Edit:</strong> upload one image and describe the change.</li>
-          <li><strong>File Compare:</strong> upload two files and explain what to compare.</li>
-          <li><strong>Jobs:</strong> long-running tasks move to the jobs drawer with retry/cancel options.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal fade" id="status-modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-light border-secondary">
-        <div class="modal-header border-secondary">
-          <div>
-            <h2 class="modal-title fs-6 m-0">Diagnostics</h2>
-            <div id="admin-summary" class="small text-secondary compact-admin-summary mt-1">Loading metrics...</div>
-          </div>
-          <div class="d-flex align-items-center gap-2">
-            <button id="refresh-status-btn" class="btn btn-sm btn-outline-light" type="button">Refresh</button>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
+            </div>
+            <div id="memory-list" class="d-grid gap-2"></div>
         </div>
-        <div class="modal-body">
-          <div class="status-grid">
-            <div class="status-chip">
-              <span class="status-chip-label">Chat</span>
-              <span id="status-chat-modal" class="status-chip-value">Ready</span>
-            </div>
-            <div class="status-chip">
-              <span class="status-chip-label">Image</span>
-              <span id="status-image-modal" class="status-chip-value">Checking</span>
-            </div>
-            <div class="status-chip">
-              <span class="status-chip-label">OCR</span>
-              <span id="status-ocr-modal" class="status-chip-value">Checking</span>
-            </div>
-            <div class="status-chip">
-              <span class="status-chip-label">Preset</span>
-              <span id="status-preset-modal" class="status-chip-value">Balanced</span>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <div class="modal fade" id="settings-modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-light border-secondary">
-        <div class="modal-header border-secondary">
-          <h2 class="modal-title fs-6 m-0">Settings</h2>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="offcanvas offcanvas-end text-bg-dark" tabindex="-1" id="help-drawer" aria-labelledby="help-drawer-title">
+        <div class="offcanvas-header border-bottom border-secondary-subtle">
+            <div>
+                <h2 id="help-drawer-title" class="fs-6 m-0">Workspace Help</h2>
+                <div class="small text-secondary">Modes, files, web usage, and jobs.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <div class="eyebrow mb-2">Voice</div>
-          <div class="mb-3">
-            <label for="voice-select" class="form-label small">Voice</label>
-            <select id="voice-select" class="form-select form-select-sm"></select>
-          </div>
-          <div class="mb-3">
-            <label for="voice-language-select" class="form-label small">Voice Language</label>
-            <select id="voice-language-select" class="form-select form-select-sm">
+        <div class="offcanvas-body">
+            <div id="help-content" class="small text-secondary">
+                <p class="mb-3">Use chat for normal questions. Use image or file modes only when an attachment is required. Heavy image and file tasks can run as background jobs.</p>
+                <ul class="help-list">
+                    <li><strong>Chat:</strong> normal questions, coding help, web-assisted answers.</li>
+                    <li><strong>Image Analyze:</strong> upload one image and ask what to extract.</li>
+                    <li><strong>Image Edit:</strong> upload one image and describe the change.</li>
+                    <li><strong>File Compare:</strong> upload two files and explain what to compare.</li>
+                    <li><strong>Jobs:</strong> long-running tasks move to the jobs drawer with retry/cancel options.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="status-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary">
+                    <div>
+                        <h2 class="modal-title fs-6 m-0">Diagnostics</h2>
+                        <div id="admin-summary" class="small text-secondary compact-admin-summary mt-1">Loading metrics...</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button id="refresh-status-btn" class="btn btn-sm btn-outline-light" type="button">Refresh</button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="status-grid">
+                        <div class="status-chip">
+                            <span class="status-chip-label">Chat</span>
+                            <span id="status-chat-modal" class="status-chip-value">Ready</span>
+                        </div>
+                        <div class="status-chip">
+                            <span class="status-chip-label">Image</span>
+                            <span id="status-image-modal" class="status-chip-value">Checking</span>
+                        </div>
+                        <div class="status-chip">
+                            <span class="status-chip-label">OCR</span>
+                            <span id="status-ocr-modal" class="status-chip-value">Checking</span>
+                        </div>
+                        <div class="status-chip">
+                            <span class="status-chip-label">Preset</span>
+                            <span id="status-preset-modal" class="status-chip-value">Balanced</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="settings-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary">
+                    <h2 class="modal-title fs-6 m-0">Settings</h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="eyebrow mb-2">Voice</div>
+                    <div class="mb-3">
+                        <label for="voice-select" class="form-label small">Voice</label>
+                        <select id="voice-select" class="form-select form-select-sm"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="voice-language-select" class="form-label small">Voice Language</label>
+                        <select id="voice-language-select" class="form-select form-select-sm">
               <option value="en-US">English (US)</option>
               <option value="en-GB">English (UK)</option>
               <option value="ur-PK">Urdu (Pakistan)</option>
             </select>
-          </div>
-          <div class="mb-3">
-            <label for="voice-rate" class="form-label small">Voice Rate</label>
-            <input id="voice-rate" class="form-range" type="range" min="0.7" max="1.3" step="0.05" value="1">
-          </div>
-          <div class="mb-3">
-            <label for="voice-pitch" class="form-label small">Voice Pitch</label>
-            <input id="voice-pitch" class="form-range" type="range" min="0.8" max="1.2" step="0.05" value="1">
-          </div>
-          <div class="form-check form-switch mb-2">
-            <input id="auto-speak-toggle" class="form-check-input" type="checkbox">
-            <label class="form-check-label small" for="auto-speak-toggle">Auto-speak assistant replies</label>
-          </div>
-          <div class="form-check form-switch mb-2">
-            <input id="transcript-preview-toggle" class="form-check-input" type="checkbox">
-            <label class="form-check-label small" for="transcript-preview-toggle">Preview transcript before sending</label>
-          </div>
-          <div class="form-check form-switch mb-2">
-            <input id="send-on-enter-toggle-modal" class="form-check-input" type="checkbox">
-            <label class="form-check-label small" for="send-on-enter-toggle-modal">Send on Enter</label>
-          </div>
-          <hr class="border-secondary">
-          <div class="eyebrow mb-2">Generation</div>
-          <div class="mb-3">
-            <label for="provider-select" class="form-label small">Provider</label>
-            <select id="provider-select" class="form-select form-select-sm">
+                    </div>
+                    <div class="mb-3">
+                        <label for="voice-rate" class="form-label small">Voice Rate</label>
+                        <input id="voice-rate" class="form-range" type="range" min="0.7" max="1.3" step="0.05" value="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="voice-pitch" class="form-label small">Voice Pitch</label>
+                        <input id="voice-pitch" class="form-range" type="range" min="0.8" max="1.2" step="0.05" value="1">
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input id="auto-speak-toggle" class="form-check-input" type="checkbox">
+                        <label class="form-check-label small" for="auto-speak-toggle">Auto-speak assistant replies</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input id="transcript-preview-toggle" class="form-check-input" type="checkbox">
+                        <label class="form-check-label small" for="transcript-preview-toggle">Preview transcript before sending</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input id="send-on-enter-toggle-modal" class="form-check-input" type="checkbox">
+                        <label class="form-check-label small" for="send-on-enter-toggle-modal">Send on Enter</label>
+                    </div>
+                    <hr class="border-secondary">
+                    <div class="eyebrow mb-2">Generation</div>
+                    <div class="mb-3">
+                        <label for="provider-select" class="form-label small">Provider</label>
+                        <select id="provider-select" class="form-select form-select-sm">
               <option value="huggingface">Hugging Face</option>
               <option value="ollama">Ollama</option>
             </select>
-          </div>
-          <div class="mb-3">
-            <label for="model-select" class="form-label small">Model</label>
-            <select id="model-select" class="form-select form-select-sm"></select>
-          </div>
-          <div class="mb-3">
-            <label for="response-preset" class="form-label small">Response Preset</label>
-            <select id="response-preset" class="form-select form-select-sm">
+                    </div>
+                    <div class="mb-3">
+                        <label for="model-select" class="form-label small">Model</label>
+                        <select id="model-select" class="form-select form-select-sm"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="response-preset" class="form-label small">Response Preset</label>
+                        <select id="response-preset" class="form-select form-select-sm">
               <option value="fast">Fast</option>
               <option value="balanced">Balanced</option>
               <option value="detailed">Detailed</option>
               <option value="coding">Coding</option>
             </select>
-          </div>
-          <div class="form-check form-switch mb-2">
-            <input id="concise-toggle" class="form-check-input" type="checkbox" checked>
-            <label class="form-check-label small" for="concise-toggle">Prefer concise answers</label>
-          </div>
-          <div class="form-check form-switch mb-2">
-            <input id="use-web-toggle" class="form-check-input" type="checkbox">
-            <label class="form-check-label small" for="use-web-toggle">Use internet when needed</label>
-          </div>
-          <div class="form-check form-switch mb-2">
-            <input id="deep-web-toggle" class="form-check-input" type="checkbox">
-            <label class="form-check-label small" for="deep-web-toggle">Deep web mode</label>
-          </div>
-          <div class="form-check form-switch mb-2">
-            <input id="background-jobs-toggle" class="form-check-input" type="checkbox">
-            <label class="form-check-label small" for="background-jobs-toggle">Run heavy tasks in background jobs</label>
-          </div>
-          <div class="mb-3">
-            <label for="max-tokens-input" class="form-label small">Max Tokens</label>
-            <input id="max-tokens-input" class="form-control form-control-sm" type="number" min="32" max="4096" step="1">
-          </div>
-          <div class="mb-3">
-            <label for="temperature-range" class="form-label small">Temperature</label>
-            <input id="temperature-range" class="form-range" type="range" min="0" max="1.5" step="0.05">
-            <div id="temperature-value" class="small text-secondary"></div>
-          </div>
-          <div class="mb-1">
-            <label for="top-p-range" class="form-label small">Top P</label>
-            <input id="top-p-range" class="form-range" type="range" min="0.1" max="1" step="0.05">
-            <div id="top-p-value" class="small text-secondary"></div>
-          </div>
-          <div class="form-check form-switch">
-            <input id="sampling-toggle" class="form-check-input" type="checkbox">
-            <label class="form-check-label small" for="sampling-toggle">Enable sampling</label>
-          </div>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input id="concise-toggle" class="form-check-input" type="checkbox" checked>
+                        <label class="form-check-label small" for="concise-toggle">Prefer concise answers</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input id="use-web-toggle" class="form-check-input" type="checkbox">
+                        <label class="form-check-label small" for="use-web-toggle">Use internet when needed</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input id="deep-web-toggle" class="form-check-input" type="checkbox">
+                        <label class="form-check-label small" for="deep-web-toggle">Deep web mode</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input id="background-jobs-toggle" class="form-check-input" type="checkbox">
+                        <label class="form-check-label small" for="background-jobs-toggle">Run heavy tasks in background jobs</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="max-tokens-input" class="form-label small">Max Tokens</label>
+                        <input id="max-tokens-input" class="form-control form-control-sm" type="number" min="32" max="4096" step="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="temperature-range" class="form-label small">Temperature</label>
+                        <input id="temperature-range" class="form-range" type="range" min="0" max="1.5" step="0.05">
+                        <div id="temperature-value" class="small text-secondary"></div>
+                    </div>
+                    <div class="mb-1">
+                        <label for="top-p-range" class="form-label small">Top P</label>
+                        <input id="top-p-range" class="form-range" type="range" min="0.1" max="1" step="0.05">
+                        <div id="top-p-value" class="small text-secondary"></div>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input id="sampling-toggle" class="form-check-input" type="checkbox">
+                        <label class="form-check-label small" for="sampling-toggle">Enable sampling</label>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 
-  <div class="modal fade" id="auth-modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-light border-secondary">
-        <div class="modal-header border-secondary">
-          <h2 class="modal-title fs-6 m-0">Account</h2>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal fade" id="auth-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary">
+                    <h2 class="modal-title fs-6 m-0">Account</h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="auth-status" class="small text-secondary mb-3">Sign in to sync sessions beyond the device token.</div>
+                    <div class="mb-3">
+                        <label for="auth-username" class="form-label small">Username</label>
+                        <input id="auth-username" class="form-control form-control-sm" type="text" autocomplete="username">
+                    </div>
+                    <div class="mb-3">
+                        <label for="auth-password" class="form-label small">Password</label>
+                        <input id="auth-password" class="form-control form-control-sm" type="password" autocomplete="current-password">
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button id="login-btn" class="btn btn-sm btn-primary" type="button">Login</button>
+                        <button id="register-btn" class="btn btn-sm btn-outline-light" type="button">Register</button>
+                        <button id="logout-btn" class="btn btn-sm btn-outline-danger" type="button">Logout</button>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="modal-body">
-          <div id="auth-status" class="small text-secondary mb-3">Sign in to sync sessions beyond the device token.</div>
-          <div class="mb-3">
-            <label for="auth-username" class="form-label small">Username</label>
-            <input id="auth-username" class="form-control form-control-sm" type="text" autocomplete="username">
-          </div>
-          <div class="mb-3">
-            <label for="auth-password" class="form-label small">Password</label>
-            <input id="auth-password" class="form-control form-control-sm" type="password" autocomplete="current-password">
-          </div>
-          <div class="d-flex gap-2 flex-wrap">
-            <button id="login-btn" class="btn btn-sm btn-primary" type="button">Login</button>
-            <button id="register-btn" class="btn btn-sm btn-outline-light" type="button">Register</button>
-            <button id="logout-btn" class="btn btn-sm btn-outline-danger" type="button">Logout</button>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <div class="modal fade" id="command-modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-light border-secondary">
-        <div class="modal-header border-secondary">
-          <div>
-            <h2 class="modal-title fs-6 m-0">Command Palette</h2>
-            <div class="small text-secondary">Open chats, collections, jobs, settings, and search results.</div>
-          </div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal fade" id="command-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary">
+                    <div>
+                        <h2 class="modal-title fs-6 m-0">Command Palette</h2>
+                        <div class="small text-secondary">Open chats, collections, jobs, settings, and search results.</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input id="command-input" class="form-control mb-3" type="search" placeholder="Search everything or type a command...">
+                    <div id="command-results" class="d-grid gap-2"></div>
+                </div>
+            </div>
         </div>
-        <div class="modal-body">
-          <input id="command-input" class="form-control mb-3" type="search" placeholder="Search everything or type a command...">
-          <div id="command-results" class="d-grid gap-2"></div>
+    </div>
+
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="app-toast" class="toast text-bg-dark border border-secondary-subtle" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-transparent text-light border-secondary-subtle">
+                <strong class="me-auto">HushGPT</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div id="app-toast-body" class="toast-body"></div>
         </div>
-      </div>
     </div>
-  </div>
 
-  <div class="toast-container position-fixed top-0 end-0 p-3">
-    <div id="app-toast" class="toast text-bg-dark border border-secondary-subtle" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="toast-header bg-transparent text-light border-secondary-subtle">
-        <strong class="me-auto">HushGPT</strong>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-      <div id="app-toast-body" class="toast-body"></div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="{{ url_for('static', filename='js/shared.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/jobs.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/messages.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/images.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/files.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/voice.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/collections.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/shared.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jobs.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/messages.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/images.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/files.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/voice.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/collections.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
+
 </html>

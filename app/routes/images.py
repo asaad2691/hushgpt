@@ -187,16 +187,6 @@ def generate_image():
     # Force-disable common safety keywords in negative prompt
     # (helps a bit even if model is aligned)
     # ────────────────────────────────────────────────
-    bad_nsfw_blockers = [
-        "nsfw", "nude", "naked", "porn", "sex", "explicit", "adult", "erotic",
-        "censored", "blurred", "mosaic", "ugly", "deformed", "bad anatomy"
-    ]
-    if negative_prompt:
-        for word in bad_nsfw_blockers:
-            negative_prompt = negative_prompt.replace(word, "")
-    # Or just wipe negative prompt completely for max freedom
-    # negative_prompt = None
-
     generated_dir = os.path.join(current_app.static_folder, "generated")
     try:
         conv = _get_or_create_conversation(conversation_id, f"Image generation: {prompt}")
@@ -205,14 +195,11 @@ def generate_image():
 
         service = ImageGenerationService(current_app.config, generated_dir)
         
-        # If your service accepts extra params, you can pass them here
         result = service.generate(
             prompt,
             negative_prompt=negative_prompt,
-            # Add if your service supports these (common in many backends):
-            safety_checker=None,
-            guidance_scale=7.0,           # lower = more creative/less restricted
-            num_inference_steps=30,
+            guidance_scale=8.0,
+            num_inference_steps=36,
         )
         
         filename = result["filename"]

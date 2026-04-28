@@ -1,502 +1,702 @@
 function updateEmptyState() {
-  if (!emptyStateEl) return;
-  emptyStateEl.classList.toggle("d-none", messagesEl.querySelector(".message-card") !== null);
+    if (!emptyStateEl) return;
+    emptyStateEl.classList.toggle("d-none", messagesEl.querySelector(".message-card") !== null);
 }
 
 function setConversationActionState() {
-  const disabled = !activeConversationId;
-  if (retryChatBtn) retryChatBtn.disabled = history.length === 0;
-  if (duplicateChatBtn) duplicateChatBtn.disabled = disabled;
-  if (branchChatBtn) branchChatBtn.disabled = disabled;
-  if (pinChatBtn) {
-    pinChatBtn.disabled = disabled;
-    const activeButton = convoListEl.querySelector(".conversation-item.active");
-    pinChatBtn.textContent = activeButton?.classList.contains("starred") ? "Unstar" : "Star";
-  }
-  if (renameChatBtn) renameChatBtn.disabled = disabled;
-  if (exportChatBtn) exportChatBtn.disabled = disabled;
-  if (deleteChatBtn) deleteChatBtn.disabled = disabled;
+    const disabled = !activeConversationId;
+    if (retryChatBtn) retryChatBtn.disabled = history.length === 0;
+    if (duplicateChatBtn) duplicateChatBtn.disabled = disabled;
+    if (branchChatBtn) branchChatBtn.disabled = disabled;
+    if (pinChatBtn) {
+        pinChatBtn.disabled = disabled;
+        const activeButton = convoListEl.querySelector(".conversation-item.active");
+        pinChatBtn.textContent = activeButton ? activeButton.classList.contains("starred") ? "Unstar" : "Star" : "Star";
+    }
+    if (renameChatBtn) renameChatBtn.disabled = disabled;
+    if (exportChatBtn) exportChatBtn.disabled = disabled;
+    if (deleteChatBtn) deleteChatBtn.disabled = disabled;
 }
 
 function scrollToBottom() {
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+    messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
 function autoResizeInput() {
-  promptEl.style.height = "auto";
-  promptEl.style.height = `${Math.min(promptEl.scrollHeight, 180)}px`;
+    promptEl.style.height = "auto";
+    promptEl.style.height = `${Math.min(promptEl.scrollHeight, 180)}px`;
 }
 
 function plainTextFromContent(content = "") {
-  return (content || "")
-    .replace(/\[\[user_image:[^\]]+\]\]/g, "")
-    .replace(/\[\[generated_image:[^\]]+\]\]/g, "")
-    .replace(/\[\[edited_image:[^\]]+\]\]/g, "")
-    .replace(/\[\[file:[^\]]+\]\]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+    return (content || "")
+        .replace(/\[\[user_image:[^\]]+\]\]/g, "")
+        .replace(/\[\[generated_image:[^\]]+\]\]/g, "")
+        .replace(/\[\[edited_image:[^\]]+\]\]/g, "")
+        .replace(/\[\[file:[^\]]+\]\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
 }
 
 function getFavorites() {
-  try {
-    return JSON.parse(localStorage.getItem("ai.favoriteMessages") || "[]");
-  } catch (err) {
-    return [];
-  }
+    try {
+        return JSON.parse(localStorage.getItem("ai.favoriteMessages") || "[]");
+    } catch (err) {
+        return [];
+    }
 }
 
 function toggleFavoriteMessage(content) {
-  const normalized = plainTextFromContent(content);
-  const items = getFavorites();
-  const existingIndex = items.indexOf(normalized);
-  if (existingIndex >= 0) {
-    items.splice(existingIndex, 1);
-  } else {
-    items.unshift(normalized);
-  }
-  localStorage.setItem("ai.favoriteMessages", JSON.stringify(items.slice(0, 40)));
-  showToast(existingIndex >= 0 ? "Removed from saved replies." : "Saved reply.", "success");
+    const normalized = plainTextFromContent(content);
+    const items = getFavorites();
+    const existingIndex = items.indexOf(normalized);
+    if (existingIndex >= 0) {
+        items.splice(existingIndex, 1);
+    } else {
+        items.unshift(normalized);
+    }
+    localStorage.setItem("ai.favoriteMessages", JSON.stringify(items.slice(0, 40)));
+    showToast(existingIndex >= 0 ? "Removed from saved replies." : "Saved reply.", "success");
 }
 
 function exportMessageText(content) {
-  const blob = new Blob([plainTextFromContent(content)], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "message.txt";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+    const blob = new Blob([plainTextFromContent(content)], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "message.txt";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
 }
 
 function hideSidebarOnMobile() {
-  if (window.innerWidth >= 992 || !chatSidebarEl || !window.bootstrap) return;
-  const instance = window.bootstrap.Collapse.getOrCreateInstance(chatSidebarEl, { toggle: false });
-  instance.hide();
+    if (window.innerWidth >= 992 || !chatSidebarEl || !window.bootstrap) return;
+    const instance = window.bootstrap.Collapse.getOrCreateInstance(chatSidebarEl, { toggle: false });
+    instance.hide();
 }
 
 function updateVoiceControls() {
-  micBtn.classList.toggle("active-voice", recognitionMode === "mic");
-  voiceChatBtn.classList.toggle("active-voice", voiceChatActive);
-  voiceStopBtn.classList.toggle("d-none", !(recognitionMode || voiceChatActive || isSpeaking));
+    micBtn.classList.toggle("active-voice", recognitionMode === "mic");
+    voiceChatBtn.classList.toggle("active-voice", voiceChatActive);
+    voiceStopBtn.classList.toggle("d-none", !(recognitionMode || voiceChatActive || isSpeaking));
 }
 
 let speechPrimed = false;
 
 function primeSpeechSynthesis() {
-  if (!speechSupported) return;
-  try {
-    window.speechSynthesis.resume();
-  } catch (err) {
-    return;
-  }
-  if (speechPrimed) return;
-  speechPrimed = true;
-  try {
-    const primer = new SpeechSynthesisUtterance(" ");
-    primer.volume = 0;
-    primer.rate = 1;
-    primer.pitch = 1;
-    window.speechSynthesis.speak(primer);
-    window.setTimeout(() => {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (err) {
-        // ignore primer cancellation issues
-      }
-    }, 20);
-  } catch (err) {
-    // ignore primer errors and fall back to normal playback attempts
-  }
+    if (!speechSupported) return;
+    try {
+        window.speechSynthesis.resume();
+    } catch (err) {
+        return;
+    }
+    if (speechPrimed) return;
+    speechPrimed = true;
+    try {
+        const primer = new SpeechSynthesisUtterance(" ");
+        primer.volume = 0;
+        primer.rate = 1;
+        primer.pitch = 1;
+        window.speechSynthesis.speak(primer);
+        window.setTimeout(() => {
+            try {
+                window.speechSynthesis.cancel();
+            } catch (err) {
+                // ignore primer cancellation issues
+            }
+        }, 20);
+    } catch (err) {
+        // ignore primer errors and fall back to normal playback attempts
+    }
 }
 
 function stopSpeaking() {
-  if (!speechSupported) return;
-  window.speechSynthesis.cancel();
-  isSpeaking = false;
-  updateVoiceControls();
+    if (!speechSupported) return;
+    window.speechSynthesis.cancel();
+    isSpeaking = false;
+    updateVoiceControls();
 }
 
 function containsUrduText(text) {
-  return /[\u0600-\u06FF]/.test(text || "");
+    return /[\u0600-\u06FF]/.test(text || "");
 }
 
 function refreshAvailableVoices() {
-  if (!speechSupported) return [];
-  try {
-    availableVoices = window.speechSynthesis.getVoices() || [];
-  } catch (err) {
-    availableVoices = [];
-  }
-  return availableVoices;
+    if (!speechSupported) return [];
+    try {
+        availableVoices = window.speechSynthesis.getVoices() || [];
+    } catch (err) {
+        availableVoices = [];
+    }
+    return availableVoices;
 }
 
 function resolveSpeechVoice(text) {
-  refreshAvailableVoices();
-  const wantsUrdu = containsUrduText(text) || (settings.voiceLanguage || "").toLowerCase().startsWith("ur");
-  const preferredLangPrefix = wantsUrdu ? "ur" : (settings.voiceLanguage || "en-US").split("-")[0].toLowerCase();
-  const namedVoice = availableVoices.find((voice) => voice.name === settings.voiceName);
+    refreshAvailableVoices();
+    const wantsUrdu = containsUrduText(text) || (settings.voiceLanguage || "").toLowerCase().startsWith("ur");
+    const preferredLangPrefix = wantsUrdu ? "ur" : (settings.voiceLanguage || "en-US").split("-")[0].toLowerCase();
+    const namedVoice = availableVoices.find((voice) => voice.name === settings.voiceName);
 
-  if (namedVoice && namedVoice.lang && namedVoice.lang.toLowerCase().startsWith(preferredLangPrefix)) {
-    return namedVoice;
-  }
+    if (namedVoice && namedVoice.lang && namedVoice.lang.toLowerCase().startsWith(preferredLangPrefix)) {
+        return namedVoice;
+    }
 
-  const languageVoice = availableVoices.find(
-    (voice) => (voice.lang || "").toLowerCase().startsWith(preferredLangPrefix)
-  );
-  if (languageVoice) {
-    return languageVoice;
-  }
+    const languageVoice = availableVoices.find(
+        (voice) => (voice.lang || "").toLowerCase().startsWith(preferredLangPrefix)
+    );
+    if (languageVoice) {
+        return languageVoice;
+    }
 
-  return namedVoice || null;
+    return namedVoice || null;
 }
 
 function buildSpeechAttempts(cleaned) {
-  const wantsUrdu = containsUrduText(cleaned);
-  const attempts = [];
-  const selectedVoice = resolveSpeechVoice(cleaned);
+    const wantsUrdu = containsUrduText(cleaned);
+    const attempts = [];
+    const selectedVoice = resolveSpeechVoice(cleaned);
 
-  if (selectedVoice) {
+    if (selectedVoice) {
+        attempts.push({
+            voice: selectedVoice,
+            lang: selectedVoice.lang || settings.voiceLanguage || (wantsUrdu ? "ur-PK" : "en-US"),
+        });
+    }
+
     attempts.push({
-      voice: selectedVoice,
-      lang: selectedVoice.lang || settings.voiceLanguage || (wantsUrdu ? "ur-PK" : "en-US"),
+        voice: null,
+        lang: wantsUrdu ? "ur-PK" : (settings.voiceLanguage || "en-US"),
     });
-  }
 
-  attempts.push({
-    voice: null,
-    lang: wantsUrdu ? "ur-PK" : (settings.voiceLanguage || "en-US"),
-  });
+    if (!wantsUrdu) {
+        attempts.push({ voice: null, lang: "en-US" });
+    }
 
-  if (!wantsUrdu) {
-    attempts.push({ voice: null, lang: "en-US" });
-  }
-
-  return attempts.filter((attempt, index, arr) => {
-    const key = `${attempt.voice?.name || "default"}|${attempt.lang}`;
-    return arr.findIndex((item) => `${item.voice?.name || "default"}|${item.lang}` === key) === index;
-  });
+    return attempts.filter((attempt, index, arr) => {
+        const key = `${attempt.voice?.name || "default"}|${attempt.lang}`;
+        return arr.findIndex((item) => `${item.voice?.name || "default"}|${item.lang}` === key) === index;
+    });
 }
 
 function playSpeechAttempt(cleaned, attempt, { onSuccess, onFailure }) {
-  const utterance = new SpeechSynthesisUtterance(cleaned);
-  utterance.rate = settings.voiceRate;
-  utterance.pitch = settings.voicePitch;
-  utterance.lang = attempt.lang;
-  if (attempt.voice) utterance.voice = attempt.voice;
-  utterance.onend = onSuccess;
-  utterance.onerror = onFailure;
-  window.speechSynthesis.speak(utterance);
+    const utterance = new SpeechSynthesisUtterance(cleaned);
+    utterance.rate = settings.voiceRate;
+    utterance.pitch = settings.voicePitch;
+    utterance.lang = attempt.lang;
+    if (attempt.voice) utterance.voice = attempt.voice;
+    utterance.onend = onSuccess;
+    utterance.onerror = onFailure;
+    window.speechSynthesis.speak(utterance);
 }
 
 function speakText(text, { onEnd } = {}) {
-  const cleaned = plainTextFromContent(text);
-  if (!speechSupported || !cleaned) {
-    if (!speechSupported) {
-      showToast("Speech synthesis is not available in this browser.", "error");
+    const cleaned = plainTextFromContent(text);
+    if (!speechSupported || !cleaned) {
+        if (!speechSupported) {
+            showToast("Speech synthesis is not available in this browser.", "error");
+        }
+        if (onEnd) onEnd();
+        return;
     }
-    if (onEnd) onEnd();
-    return;
-  }
 
-  primeSpeechSynthesis();
-  stopSpeaking();
-  try {
-    window.speechSynthesis.resume();
-  } catch (err) {
-    // continue even if resume is not supported
-  }
-  isSpeaking = true;
-  updateVoiceControls();
-  const attempts = buildSpeechAttempts(cleaned);
-  let attemptIndex = 0;
-
-  const finish = () => {
-    isSpeaking = false;
-    updateVoiceControls();
-    if (onEnd) onEnd();
-  };
-
-  const runAttempt = () => {
-    const attempt = attempts[attemptIndex];
-    if (!attempt) {
-      finish();
-      if (containsUrduText(cleaned)) {
-        showToast("Speech playback failed. Your browser or Windows install likely does not have a working Urdu TTS voice.", "error");
-      } else {
-        showToast("Speech playback failed in this browser.", "error");
-      }
-      return;
-    }
+    primeSpeechSynthesis();
+    stopSpeaking();
     try {
-      playSpeechAttempt(cleaned, attempt, {
-        onSuccess: finish,
-        onFailure: () => {
-          attemptIndex += 1;
-          try {
-            window.speechSynthesis.cancel();
-          } catch (err) {
-            // ignore cancel issues between attempts
-          }
-          window.setTimeout(runAttempt, 50);
-        },
-      });
+        window.speechSynthesis.resume();
     } catch (err) {
-      attemptIndex += 1;
-      window.setTimeout(runAttempt, 50);
+        // continue even if resume is not supported
     }
-  };
+    isSpeaking = true;
+    updateVoiceControls();
+    const attempts = buildSpeechAttempts(cleaned);
+    let attemptIndex = 0;
 
-  runAttempt();
+    const finish = () => {
+        isSpeaking = false;
+        updateVoiceControls();
+        if (onEnd) onEnd();
+    };
+
+    const runAttempt = () => {
+        const attempt = attempts[attemptIndex];
+        if (!attempt) {
+            finish();
+            if (containsUrduText(cleaned)) {
+                showToast("Speech playback failed. Your browser or Windows install likely does not have a working Urdu TTS voice.", "error");
+            } else {
+                showToast("Speech playback failed in this browser.", "error");
+            }
+            return;
+        }
+        try {
+            playSpeechAttempt(cleaned, attempt, {
+                onSuccess: finish,
+                onFailure: () => {
+                    attemptIndex += 1;
+                    try {
+                        window.speechSynthesis.cancel();
+                    } catch (err) {
+                        // ignore cancel issues between attempts
+                    }
+                    window.setTimeout(runAttempt, 50);
+                },
+            });
+        } catch (err) {
+            attemptIndex += 1;
+            window.setTimeout(runAttempt, 50);
+        }
+    };
+
+    runAttempt();
 }
 
 function stopRecognition() {
-  if (recognition) {
-    recognition.onend = null;
-    recognition.stop();
-  }
-  recognition = null;
-  recognitionMode = null;
-  pendingVoiceSubmit = false;
-  updateVoiceControls();
+    if (recognition) {
+        recognition.onend = null;
+        recognition.stop();
+    }
+    recognition = null;
+    recognitionMode = null;
+    pendingVoiceSubmit = false;
+    updateVoiceControls();
 }
 
 function startRecognition(mode) {
-  if (!recognitionSupported) return;
-  stopSpeaking();
-  if (recognition) stopRecognition();
+    if (!recognitionSupported) return;
+    stopSpeaking();
+    if (recognition) stopRecognition();
 
-  recognition = new SpeechRecognitionCtor();
-  recognition.lang = settings.voiceLanguage || "en-US";
-  recognition.interimResults = mode === "mic";
-  recognition.continuous = false;
-  recognitionMode = mode;
-  pendingVoiceSubmit = false;
-  updateVoiceControls();
-
-  recognition.onresult = async (event) => {
-    let transcript = "";
-    for (let i = event.resultIndex; i < event.results.length; i += 1) {
-      transcript += event.results[i][0].transcript;
-    }
-    transcript = transcript.trim();
-    if (!transcript) return;
-
-    promptEl.value = transcript;
-    autoResizeInput();
-
-    if (settings.transcriptPreview && mode !== "voice-chat") {
-      pendingVoiceSubmit = false;
-      return;
-    }
-
-    const finalResult = event.results[event.results.length - 1];
-    if (!finalResult.isFinal && mode === "mic") return;
-    if (pendingVoiceSubmit) return;
-    pendingVoiceSubmit = true;
-
-    if (mode === "voice-chat") {
-      chatModeEl.value = "chat";
-      chatModeEl.dispatchEvent(new Event("change"));
-    }
-    stopRecognition();
-    await submitCurrentModePrompt(transcript);
-  };
-
-  recognition.onend = () => {
-    const shouldRestart = voiceChatActive && !isSpeaking && !pendingVoiceSubmit;
-    recognition = null;
-    recognitionMode = null;
+    recognition = new SpeechRecognitionCtor();
+    recognition.lang = settings.voiceLanguage || "en-US";
+    recognition.interimResults = mode === "mic";
+    recognition.continuous = false;
+    recognitionMode = mode;
+    pendingVoiceSubmit = false;
     updateVoiceControls();
-    if (shouldRestart) startRecognition("voice-chat");
-  };
 
-  recognition.onerror = () => {
-    recognition = null;
-    recognitionMode = null;
-    updateVoiceControls();
-  };
+    recognition.onresult = async(event) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+            transcript += event.results[i][0].transcript;
+        }
+        transcript = transcript.trim();
+        if (!transcript) return;
 
-  recognition.start();
+        promptEl.value = transcript;
+        autoResizeInput();
+
+        if (settings.transcriptPreview && mode !== "voice-chat") {
+            pendingVoiceSubmit = false;
+            return;
+        }
+
+        const finalResult = event.results[event.results.length - 1];
+        if (!finalResult.isFinal && mode === "mic") return;
+        if (pendingVoiceSubmit) return;
+        pendingVoiceSubmit = true;
+
+        if (mode === "voice-chat") {
+            chatModeEl.value = "chat";
+            chatModeEl.dispatchEvent(new Event("change"));
+        }
+        stopRecognition();
+        await submitCurrentModePrompt(transcript);
+    };
+
+    recognition.onend = () => {
+        const shouldRestart = voiceChatActive && !isSpeaking && !pendingVoiceSubmit;
+        recognition = null;
+        recognitionMode = null;
+        updateVoiceControls();
+        if (shouldRestart) startRecognition("voice-chat");
+    };
+
+    recognition.onerror = () => {
+        recognition = null;
+        recognitionMode = null;
+        updateVoiceControls();
+    };
+
+    recognition.start();
 }
 
 function extractImageToken(content, tokenName) {
-  const re = new RegExp(`\\[\\[${tokenName}:([^\\]]+)\\]\\]`);
-  const match = (content || "").match(re);
-  return match ? match[1] : null;
+    const re = new RegExp(`\\[\\[${tokenName}:([^\\]]+)\\]\\]`);
+    const match = (content || "").match(re);
+    return match ? match[1] : null;
 }
 
 function resolveAssetUrl(value) {
-  const raw = (value || "").trim();
-  if (!raw) return "";
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith("/")) return raw;
-  return `/${raw.replace(/^\/+/, "")}`;
+    const raw = (value || "").trim();
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw.startsWith("/")) return raw;
+    return `/${raw.replace(/^\/+/, "")}`;
+}
+
+function formatCodeBlockText(code = "", language = "") {
+    const normalizedLang = (language || "").toLowerCase();
+    const hasManualLineBreaks = /\n/.test(code);
+    let formatted = String(code || "").replace(/\r\n/g, "\n");
+
+    // When the model returns compact HTML/XML, split adjacent tags onto new lines.
+    if (!hasManualLineBreaks || /html|xml|svg/.test(normalizedLang) || /<[/a-z!][^>]*>/i.test(formatted)) {
+        formatted = formatted.replace(/>\s*</g, ">\n<");
+    }
+
+    // If the code is mostly one long line, split statements after semicolons for readability.
+    if (!hasManualLineBreaks) {
+        formatted = formatted.replace(/;\s*/g, ";\n");
+    }
+
+    return formatted.trim();
+}
+
+function normalizeCodeLanguage(language = "") {
+    return String(language || "").trim().toLowerCase();
+}
+
+function supportsRenderedCodePreview(language = "", code = "") {
+    const normalizedLang = normalizeCodeLanguage(language);
+    if (["html", "htm"].includes(normalizedLang)) return true;
+    if (["css", "js", "javascript", "jsx", "ts", "tsx"].includes(normalizedLang)) return true;
+    return /<(html|body|div|section|main|style|script)[\s>]/i.test(code || "");
+}
+
+function buildPreviewDocument(code = "", language = "") {
+    const normalizedLang = normalizeCodeLanguage(language);
+    const source = String(code || "");
+
+    if (["html", "htm"].includes(normalizedLang) || /<(html|body|div|section|main|style|script)[\s>]/i.test(source)) {
+        return source;
+    }
+
+    if (normalizedLang === "css") {
+        return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { font-family: Arial, sans-serif; padding: 24px; background: #f6f8fb; color: #122033; }
+.preview-card { padding: 24px; border-radius: 16px; background: white; border: 1px solid #d7deea; }
+${source}
+</style>
+</head>
+<body>
+  <div class="preview-card">
+    <h1>CSS Preview</h1>
+    <p>This live panel shows the stylesheet applied to sample content.</p>
+    <button>Sample button</button>
+  </div>
+</body>
+</html>`;
+    }
+
+    if (["js", "javascript", "jsx", "ts", "tsx"].includes(normalizedLang)) {
+        return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { font-family: Arial, sans-serif; padding: 24px; background: #f6f8fb; color: #122033; }
+#app { padding: 24px; border-radius: 16px; background: white; border: 1px solid #d7deea; min-height: 120px; }
+</style>
+</head>
+<body>
+  <div id="app">JavaScript preview loaded.</div>
+  <script>
+${source}
+  </script>
+</body>
+</html>`;
+    }
+
+    return "";
+}
+
+function getCodePreviewModal() {
+    let modalEl = document.getElementById("code-preview-modal");
+    if (modalEl) return modalEl;
+
+    modalEl = document.createElement("div");
+    modalEl.className = "modal fade";
+    modalEl.id = "code-preview-modal";
+    modalEl.tabIndex = -1;
+    modalEl.setAttribute("aria-hidden", "true");
+    modalEl.innerHTML = `
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-light border-secondary">
+          <div class="modal-header border-secondary">
+            <div>
+              <h2 class="modal-title fs-6 m-0">Code Preview</h2>
+              <div class="small text-secondary code-preview-language">Source view</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="code-preview-toolbar mb-3">
+              <button type="button" class="btn btn-sm btn-outline-light code-preview-copy">Copy code</button>
+              <button type="button" class="btn btn-sm btn-outline-info code-preview-live d-none">Live preview</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary code-preview-source d-none">Source</button>
+            </div>
+            <pre class="code-preview-source-pane"></pre>
+            <iframe class="code-preview-frame d-none" sandbox="allow-scripts"></iframe>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modalEl);
+    return modalEl;
+}
+
+function openCodePreview(code = "", language = "") {
+    const modalEl = getCodePreviewModal();
+    const normalizedLang = normalizeCodeLanguage(language);
+    const sourcePane = modalEl.querySelector(".code-preview-source-pane");
+    const frame = modalEl.querySelector(".code-preview-frame");
+    const languageEl = modalEl.querySelector(".code-preview-language");
+    const copyBtn = modalEl.querySelector(".code-preview-copy");
+    const liveBtn = modalEl.querySelector(".code-preview-live");
+    const sourceBtn = modalEl.querySelector(".code-preview-source");
+    const formattedCode = formatCodeBlockText(code, language);
+    const liveDoc = buildPreviewDocument(code, language);
+    const hasLivePreview = supportsRenderedCodePreview(language, code) && !!liveDoc;
+
+    sourcePane.textContent = formattedCode;
+    languageEl.textContent = normalizedLang ? `${normalizedLang.toUpperCase()} source` : "Source view";
+    frame.srcdoc = hasLivePreview ? liveDoc : "";
+    frame.classList.toggle("d-none", !hasLivePreview);
+    sourcePane.classList.remove("d-none");
+    liveBtn.classList.toggle("d-none", !hasLivePreview);
+    sourceBtn.classList.toggle("d-none", !hasLivePreview);
+
+    copyBtn.onclick = async() => {
+        await navigator.clipboard.writeText(formattedCode);
+        showToast("Code copied.", "success");
+    };
+
+    if (hasLivePreview) {
+        liveBtn.onclick = () => {
+            sourcePane.classList.add("d-none");
+            frame.classList.remove("d-none");
+        };
+        sourceBtn.onclick = () => {
+            sourcePane.classList.remove("d-none");
+            frame.classList.add("d-none");
+        };
+    } else {
+        liveBtn.onclick = null;
+        sourceBtn.onclick = null;
+    }
+
+    const modal = window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+    if (modal) modal.show();
+}
+
+function createCodeBlockNode(code = "", language = "") {
+    const formattedCode = formatCodeBlockText(code, language);
+    const wrapper = document.createElement("div");
+    wrapper.className = "code-block-wrap";
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "code-block-toolbar";
+
+    const label = document.createElement("span");
+    label.className = "code-block-label";
+    label.textContent = normalizeCodeLanguage(language) || "CODE";
+    toolbar.appendChild(label);
+
+    const actions = document.createElement("div");
+    actions.className = "code-block-actions";
+
+    const previewBtn = document.createElement("button");
+    previewBtn.type = "button";
+    previewBtn.className = "btn btn-sm btn-outline-info";
+    previewBtn.textContent = supportsRenderedCodePreview(language, code) ? "Preview" : "View";
+    previewBtn.onclick = () => openCodePreview(code, language);
+    actions.appendChild(previewBtn);
+
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "btn btn-sm btn-outline-light";
+    copyBtn.textContent = "Copy code";
+    copyBtn.onclick = async() => {
+        await navigator.clipboard.writeText(formattedCode);
+        showToast("Code copied.", "success");
+    };
+    actions.appendChild(copyBtn);
+
+    toolbar.appendChild(actions);
+    wrapper.appendChild(toolbar);
+
+    const pre = document.createElement("pre");
+    pre.className = "code-block";
+    pre.textContent = formattedCode;
+    wrapper.appendChild(pre);
+
+    return wrapper;
 }
 
 function appendFormattedText(contentEl, text) {
-  const parts = (text || "").split(/```/);
-  parts.forEach((part, index) => {
-    if (!part) return;
-    if (index % 2 === 1) {
-      const lines = part.replace(/^\n+/, "").split("\n");
-      const maybeLang = lines[0] && !lines[0].includes(" ") ? lines[0] : "";
-      const code = maybeLang ? lines.slice(1).join("\n") : lines.join("\n");
-      const pre = document.createElement("pre");
-      pre.className = "code-block";
-      const codeEl = document.createElement("code");
-      codeEl.textContent = code;
-      pre.appendChild(codeEl);
-      contentEl.appendChild(pre);
-    } else {
-      const block = document.createElement("div");
-      block.className = "message-text";
-      block.textContent = part;
-      contentEl.appendChild(block);
-    }
-  });
+    const parts = (text || "").split(/```/);
+    parts.forEach((part, index) => {
+        if (!part) return;
+        if (index % 2 === 1) {
+            const lines = part.replace(/^\n+/, "").split("\n");
+            const maybeLang = lines[0] && !lines[0].includes(" ") ? lines[0] : "";
+            const code = maybeLang ? lines.slice(1).join("\n") : lines.join("\n");
+            contentEl.appendChild(createCodeBlockNode(code, maybeLang));
+        } else {
+            const block = document.createElement("div");
+            block.className = "message-text";
+            block.textContent = part;
+            contentEl.appendChild(block);
+        }
+    });
 }
 
 function renderContent(contentEl, content = "") {
-  contentEl.innerHTML = "";
-  const userImageUrl = extractImageToken(content, "user_image");
-  const generatedImageUrl = extractImageToken(content, "generated_image");
-  const editedImageUrl = extractImageToken(content, "edited_image");
-  const fileMatch = (content || "").match(/\[\[file:([^\]|]+)\|([^\]]+)\]\]/);
-  const fileUrl = fileMatch ? fileMatch[1] : null;
-  const fileName = fileMatch ? fileMatch[2] : null;
-  const textOnly = (content || "")
-    .replace(/\[\[user_image:[^\]]+\]\]/g, "")
-    .replace(/\[\[generated_image:[^\]]+\]\]/g, "")
-    .replace(/\[\[edited_image:[^\]]+\]\]/g, "")
-    .replace(/\[\[file:[^\]]+\]\]/g, "")
-    .trim();
+    contentEl.innerHTML = "";
+    const userImageUrl = extractImageToken(content, "user_image");
+    const generatedImageUrl = extractImageToken(content, "generated_image");
+    const editedImageUrl = extractImageToken(content, "edited_image");
+    const fileMatch = (content || "").match(/\[\[file:([^\]|]+)\|([^\]]+)\]\]/);
+    const fileUrl = fileMatch ? fileMatch[1] : null;
+    const fileName = fileMatch ? fileMatch[2] : null;
+    const textOnly = (content || "")
+        .replace(/\[\[user_image:[^\]]+\]\]/g, "")
+        .replace(/\[\[generated_image:[^\]]+\]\]/g, "")
+        .replace(/\[\[edited_image:[^\]]+\]\]/g, "")
+        .replace(/\[\[file:[^\]]+\]\]/g, "")
+        .trim();
 
-  const imageUrl = editedImageUrl || generatedImageUrl || userImageUrl;
-  if (imageUrl) {
-    const img = document.createElement("img");
-    img.src = resolveAssetUrl(imageUrl);
-    img.alt = (generatedImageUrl || editedImageUrl) ? "Generated image" : "Uploaded image";
-    img.className = "generated-image";
-    contentEl.appendChild(img);
+    const imageUrl = editedImageUrl || generatedImageUrl || userImageUrl;
+    if (imageUrl) {
+        const img = document.createElement("img");
+        img.src = resolveAssetUrl(imageUrl);
+        img.alt = (generatedImageUrl || editedImageUrl) ? "Generated image" : "Uploaded image";
+        img.className = "generated-image";
+        contentEl.appendChild(img);
 
-    if (generatedImageUrl || editedImageUrl) {
-      const link = document.createElement("a");
-      link.href = resolveAssetUrl(imageUrl);
-      link.download = resolveAssetUrl(imageUrl).split("/").pop() || "generated-image.png";
-      link.className = "btn btn-sm btn-outline-light mt-2";
-      link.textContent = "Download";
-      contentEl.appendChild(document.createElement("br"));
-      contentEl.appendChild(link);
+        if (generatedImageUrl || editedImageUrl) {
+            const link = document.createElement("a");
+            link.href = resolveAssetUrl(imageUrl);
+            link.download = resolveAssetUrl(imageUrl).split("/").pop() || "generated-image.png";
+            link.className = "btn btn-sm btn-outline-light mt-2";
+            link.textContent = "Download";
+            contentEl.appendChild(document.createElement("br"));
+            contentEl.appendChild(link);
+        }
     }
-  }
 
-  if (textOnly) {
-    if (imageUrl) contentEl.appendChild(document.createElement("br"));
-    appendFormattedText(contentEl, textOnly);
-  }
+    if (textOnly) {
+        if (imageUrl) contentEl.appendChild(document.createElement("br"));
+        appendFormattedText(contentEl, textOnly);
+    }
 
-  if (fileUrl) {
-    if (imageUrl || textOnly) contentEl.appendChild(document.createElement("br"));
-    const fileLink = document.createElement("a");
-    fileLink.href = fileUrl;
-    fileLink.download = fileName || "file";
-    fileLink.className = "btn btn-sm btn-outline-info mt-2";
-    fileLink.textContent = `Download ${fileName || "file"}`;
-    contentEl.appendChild(fileLink);
-  }
+    if (fileUrl) {
+        if (imageUrl || textOnly) contentEl.appendChild(document.createElement("br"));
+        const fileLink = document.createElement("a");
+        fileLink.href = fileUrl;
+        fileLink.download = fileName || "file";
+        fileLink.className = "btn btn-sm btn-outline-info mt-2";
+        fileLink.textContent = `Download ${fileName || "file"}`;
+        contentEl.appendChild(fileLink);
+    }
 }
 
 function setMessageSources(messageNode, sources = []) {
-  const sourcesEl = messageNode.querySelector(".sources");
-  if (!sourcesEl) return;
-  sourcesEl.innerHTML = "";
+    const sourcesEl = messageNode.querySelector(".sources");
+    if (!sourcesEl) return;
+    sourcesEl.innerHTML = "";
 
-  if (!sources.length) {
-    sourcesEl.classList.add("d-none");
-    return;
-  }
+    if (!sources.length) {
+        sourcesEl.classList.add("d-none");
+        return;
+    }
 
-  sources.forEach((source) => {
-    const link = document.createElement("a");
-    link.className = "source-card";
-    link.href = source.url || "#";
-    link.target = "_blank";
-    link.rel = "noreferrer noopener";
+    sources.forEach((source) => {
+        const link = document.createElement("a");
+        link.className = "source-card";
+        link.href = source.url || "#";
+        link.target = "_blank";
+        link.rel = "noreferrer noopener";
 
-    const title = document.createElement("span");
-    title.className = "source-title";
-    title.textContent = source.title || source.url || "Source";
+        const title = document.createElement("span");
+        title.className = "source-title";
+        title.textContent = source.title || source.url || "Source";
 
-    const snippet = document.createElement("span");
-    snippet.className = "source-snippet";
-    snippet.textContent = source.snippet || "";
+        const snippet = document.createElement("span");
+        snippet.className = "source-snippet";
+        snippet.textContent = source.snippet || "";
 
-    const url = document.createElement("span");
-    url.className = "source-url";
-    url.textContent = source.url || "";
+        const url = document.createElement("span");
+        url.className = "source-url";
+        url.textContent = source.url || "";
 
-    link.appendChild(title);
-    if (snippet.textContent) link.appendChild(snippet);
-    if (url.textContent) link.appendChild(url);
-    sourcesEl.appendChild(link);
-  });
+        link.appendChild(title);
+        if (snippet.textContent) link.appendChild(snippet);
+        if (url.textContent) link.appendChild(url);
+        sourcesEl.appendChild(link);
+    });
 
-  sourcesEl.classList.remove("d-none");
+    sourcesEl.classList.remove("d-none");
 }
 
 function createMessageNode(role, content = "", sources = []) {
-  emptyStateEl?.classList.add("d-none");
-  const node = template.content.cloneNode(true);
-  const card = node.querySelector(".message-card");
-  card.classList.add(role);
-  node.querySelector(".role").textContent = role;
-  const actionsEl = node.querySelector(".message-actions");
-  const contentEl = node.querySelector(".content");
-  renderContent(contentEl, content);
+    emptyStateEl && emptyStateEl.classList.add("d-none");
+    const node = template.content.cloneNode(true);
+    const card = node.querySelector(".message-card");
+    card.classList.add(role);
+    node.querySelector(".role").textContent = role;
+    const actionsEl = node.querySelector(".message-actions");
+    const contentEl = node.querySelector(".content");
+    renderContent(contentEl, content);
 
-  if (role === "user") {
-    const editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.className = "btn btn-sm btn-outline-light";
-    editBtn.textContent = "Edit";
-    editBtn.onclick = () => {
-      promptEl.value = plainTextFromContent(content);
-      promptEl.focus();
-      autoResizeInput();
-    };
-    actionsEl.appendChild(editBtn);
-  }
+    if (role === "user") {
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "btn btn-sm btn-outline-light";
+        editBtn.textContent = "Edit";
+        editBtn.onclick = () => {
+            promptEl.value = plainTextFromContent(content);
+            promptEl.focus();
+            autoResizeInput();
+        };
+        actionsEl.appendChild(editBtn);
+    }
 
-  if (role === "assistant") {
-    const copyBtn = document.createElement("button");
-    copyBtn.type = "button";
-    copyBtn.className = "btn btn-sm btn-outline-light copy-btn";
-    copyBtn.textContent = "Copy";
-    copyBtn.onclick = async () => {
-      await navigator.clipboard.writeText(plainTextFromContent(content));
-      showToast("Copied reply.", "success");
-    };
-    actionsEl.appendChild(copyBtn);
+    if (role === "assistant") {
+        const copyBtn = document.createElement("button");
+        copyBtn.type = "button";
+        copyBtn.className = "btn btn-sm btn-outline-light copy-btn";
+        copyBtn.textContent = "Copy";
+        copyBtn.onclick = async() => {
+            await navigator.clipboard.writeText(plainTextFromContent(content));
+            showToast("Copied reply.", "success");
+        };
+        actionsEl.appendChild(copyBtn);
 
-    const upBtn = document.createElement("button");
-    upBtn.type = "button";
-    upBtn.className = "btn btn-sm btn-outline-light feedback-btn";
-    upBtn.textContent = "Up";
-    upBtn.onclick = () => sendMessageFeedback("up", content);
-    actionsEl.appendChild(upBtn);
+        const upBtn = document.createElement("button");
+        upBtn.type = "button";
+        upBtn.className = "btn btn-sm btn-outline-light feedback-btn";
+        upBtn.textContent = "Up";
+        upBtn.onclick = () => sendMessageFeedback("up", content);
+        actionsEl.appendChild(upBtn);
 
-    const downBtn = document.createElement("button");
-    downBtn.type = "button";
-    downBtn.className = "btn btn-sm btn-outline-light feedback-btn";
-    downBtn.textContent = "Down";
-    downBtn.onclick = () => sendMessageFeedback("down", content);
-    actionsEl.appendChild(downBtn);
+        const downBtn = document.createElement("button");
+        downBtn.type = "button";
+        downBtn.className = "btn btn-sm btn-outline-light feedback-btn";
+        downBtn.textContent = "Down";
+        downBtn.onclick = () => sendMessageFeedback("down", content);
+        actionsEl.appendChild(downBtn);
 
-    const dropdown = document.createElement("div");
-    dropdown.className = "dropdown";
-    dropdown.innerHTML = `
+        const dropdown = document.createElement("div");
+        dropdown.className = "dropdown";
+        dropdown.innerHTML = `
       <button class="btn btn-sm btn-outline-light dropdown-toggle message-menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">...</button>
       <div class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg">
         <button class="dropdown-item action-save" type="button">Save</button>
@@ -508,115 +708,114 @@ function createMessageNode(role, content = "", sources = []) {
         <button class="dropdown-item action-wrong" type="button">Wrong answer</button>
       </div>
     `;
-    actionsEl.appendChild(dropdown);
-  }
+        actionsEl.appendChild(dropdown);
+    }
 
-  messagesEl.appendChild(node);
-  const messageNode = messagesEl.lastElementChild;
-  bindAssistantMessageActions(messageNode, content);
-  setMessageSources(messageNode, sources);
-  scrollToBottom();
-  updateEmptyState();
-  return messageNode;
+    messagesEl.appendChild(node);
+    const messageNode = messagesEl.lastElementChild;
+    bindAssistantMessageActions(messageNode, content);
+    setMessageSources(messageNode, sources);
+    scrollToBottom();
+    updateEmptyState();
+    return messageNode;
 }
 
 function setMessageContent(messageNode, content) {
-  const contentEl = messageNode.querySelector(".content");
-  renderContent(contentEl, content);
-  bindAssistantMessageActions(messageNode, content);
-  scrollToBottom();
+    const contentEl = messageNode.querySelector(".content");
+    renderContent(contentEl, content);
+    bindAssistantMessageActions(messageNode, content);
+    scrollToBottom();
 }
 
 function bindAssistantMessageActions(messageNode, content) {
-  const copyBtn = messageNode.querySelector(".copy-btn");
-  if (copyBtn) {
-    copyBtn.onclick = async () => {
-      await navigator.clipboard.writeText(plainTextFromContent(content));
-      showToast("Copied reply.", "success");
-    };
-  }
-  const saveBtn = messageNode.querySelector(".action-save");
-  if (saveBtn) saveBtn.onclick = () => toggleFavoriteMessage(content);
-  const exportBtn = messageNode.querySelector(".action-export");
-  if (exportBtn) exportBtn.onclick = () => exportMessageText(content);
-  const speakBtn = messageNode.querySelector(".action-speak");
-  if (speakBtn) speakBtn.onclick = () => speakText(content);
-  const rememberBtn = messageNode.querySelector(".action-remember");
-  if (rememberBtn) rememberBtn.onclick = () => rememberMessage(content);
-  const shorterBtn = messageNode.querySelector(".action-shorter");
-  if (shorterBtn) shorterBtn.onclick = () => requestRewrite(content, "shorter");
-  const detailedBtn = messageNode.querySelector(".action-detailed");
-  if (detailedBtn) detailedBtn.onclick = () => requestRewrite(content, "detailed");
-  const wrongBtn = messageNode.querySelector(".action-wrong");
-  if (wrongBtn) wrongBtn.onclick = () => sendMessageFeedback("wrong", content);
+    const copyBtn = messageNode.querySelector(".copy-btn");
+    if (copyBtn) {
+        copyBtn.onclick = async() => {
+            await navigator.clipboard.writeText(plainTextFromContent(content));
+            showToast("Copied reply.", "success");
+        };
+    }
+    const saveBtn = messageNode.querySelector(".action-save");
+    if (saveBtn) saveBtn.onclick = () => toggleFavoriteMessage(content);
+    const exportBtn = messageNode.querySelector(".action-export");
+    if (exportBtn) exportBtn.onclick = () => exportMessageText(content);
+    const speakBtn = messageNode.querySelector(".action-speak");
+    if (speakBtn) speakBtn.onclick = () => speakText(content);
+    const rememberBtn = messageNode.querySelector(".action-remember");
+    if (rememberBtn) rememberBtn.onclick = () => rememberMessage(content);
+    const shorterBtn = messageNode.querySelector(".action-shorter");
+    if (shorterBtn) shorterBtn.onclick = () => requestRewrite(content, "shorter");
+    const detailedBtn = messageNode.querySelector(".action-detailed");
+    if (detailedBtn) detailedBtn.onclick = () => requestRewrite(content, "detailed");
+    const wrongBtn = messageNode.querySelector(".action-wrong");
+    if (wrongBtn) wrongBtn.onclick = () => sendMessageFeedback("wrong", content);
 }
 
 async function sendMessageFeedback(rating, content) {
-  const res = await fetch("/api/feedback", {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({
-      rating,
-      note: plainTextFromContent(content).slice(0, 4000),
-      conversation_id: activeConversationId,
-    }),
-  });
-  const data = await readResponsePayload(res);
-  if (!res.ok) {
-    showToast(data.error || "Failed to save feedback.", "error");
-    return;
-  }
-  showToast("Feedback saved.", "success");
+    const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({
+            rating,
+            note: plainTextFromContent(content).slice(0, 4000),
+            conversation_id: activeConversationId,
+        }),
+    });
+    const data = await readResponsePayload(res);
+    if (!res.ok) {
+        showToast(data.error || "Failed to save feedback.", "error");
+        return;
+    }
+    showToast("Feedback saved.", "success");
 }
 
 async function rememberMessage(content) {
-  const scope = window.prompt("Save memory scope: profile, project, or conversation", "project");
-  if (!scope) return;
-  const title = window.prompt("Memory title", "Saved preference");
-  const res = await fetch("/api/memory", {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({
-      scope,
-      title: title || "Memory",
-      content: plainTextFromContent(content),
-      conversation_id: activeConversationId,
-    }),
-  });
-  const data = await readResponsePayload(res);
-  if (!res.ok) {
-    showToast(data.error || "Failed to save memory.", "error");
-    return;
-  }
-  showToast("Memory saved.", "success");
-  if (typeof loadMemoryItems === "function") {
-    await loadMemoryItems();
-  }
+    const scope = window.prompt("Save memory scope: profile, project, or conversation", "project");
+    if (!scope) return;
+    const title = window.prompt("Memory title", "Saved preference");
+    const res = await fetch("/api/memory", {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({
+            scope,
+            title: title || "Memory",
+            content: plainTextFromContent(content),
+            conversation_id: activeConversationId,
+        }),
+    });
+    const data = await readResponsePayload(res);
+    if (!res.ok) {
+        showToast(data.error || "Failed to save memory.", "error");
+        return;
+    }
+    showToast("Memory saved.", "success");
+    if (typeof loadMemoryItems === "function") {
+        await loadMemoryItems();
+    }
 }
 
 function requestRewrite(content, mode) {
-  promptEl.value = mode === "shorter"
-    ? `Make this answer shorter and more direct:\n\n${plainTextFromContent(content)}`
-    : `Expand this answer with more detail and examples:\n\n${plainTextFromContent(content)}`;
-  promptEl.focus();
-  autoResizeInput();
-  sendMessageFeedback(mode, content).catch(() => {});
+    promptEl.value = mode === "shorter" ?
+        `Make this answer shorter and more direct:\n\n${plainTextFromContent(content)}` :
+        `Expand this answer with more detail and examples:\n\n${plainTextFromContent(content)}`;
+    promptEl.focus();
+    autoResizeInput();
+    sendMessageFeedback(mode, content).catch(() => {});
 }
 
 function addTypingIndicator() {
-  const message = createMessageNode("assistant", "");
-  const contentEl = message.querySelector(".content");
-  contentEl.innerHTML = `<span class="typing"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span><span class="thinking-label">Thinking...</span></span>`;
-  return message;
+    const message = createMessageNode("assistant", "");
+    const contentEl = message.querySelector(".content");
+    contentEl.innerHTML = `<span class="typing"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span><span class="thinking-label">Thinking...</span></span>`;
+    return message;
 }
 
 function clearMessages() {
-  messagesEl.innerHTML = "";
-  updateEmptyState();
+    messagesEl.innerHTML = "";
+    updateEmptyState();
 }
 
 function truncate(text, length = 72) {
-  if (!text) return "";
-  return text.length > length ? `${text.slice(0, length).trim()}...` : text;
+    if (!text) return "";
+    return text.length > length ? `${text.slice(0, length).trim()}...` : text;
 }
-

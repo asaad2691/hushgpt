@@ -28,7 +28,7 @@
         </div>
         <div class="persona-header-copy-block">
           <h1 class="persona-page-title">Persona Studio</h1>
-          <p class="persona-header-copy">A separate multilingual avatar mode with voice chat, portrait animation, and live speaking presence.</p>
+          <p class="persona-header-copy">A separate multilingual avatar mode with real 3D avatar presets, custom GLB support, and image fallback when you need it.</p>
         </div>
       </div>
       <div class="persona-header-actions">
@@ -40,13 +40,70 @@
 
     <main class="persona-layout">
       <section class="persona-stage-panel">
+        <div class="persona-card persona-library-card">
+          <div class="card-header-row">
+            <div>
+              <div class="section-label">Persona Library</div>
+              <h2 class="section-title">Saved personas</h2>
+            </div>
+            <div class="persona-library-actions">
+              <button id="persona-new-profile-btn" type="button" class="btn btn-sm btn-primary">New</button>
+              <button id="persona-save-profile-btn" type="button" class="btn btn-sm btn-outline-light">Save</button>
+            </div>
+          </div>
+          <div id="persona-profile-list" class="persona-profile-list"></div>
+          <div class="persona-library-actions persona-library-actions-bottom">
+            <button id="persona-duplicate-profile-btn" type="button" class="btn btn-sm btn-outline-light">Duplicate</button>
+            <button id="persona-export-profile-btn" type="button" class="btn btn-sm btn-outline-light">Export</button>
+            <label class="btn btn-sm btn-outline-light mb-0">Import<input id="persona-import-profile-input" type="file" accept="application/json" hidden></label>
+            <button id="persona-delete-profile-btn" type="button" class="btn btn-sm btn-outline-danger">Delete</button>
+          </div>
+        </div>
+
         <div class="persona-stage">
           <div class="persona-aura"></div>
           <div class="persona-floor-glow"></div>
           <div id="persona-avatar" class="persona-avatar">
             <div id="persona-portrait-shell" class="persona-portrait-shell">
               <img id="persona-portrait" class="persona-portrait" src="{{ url_for('static', filename='img/persona-default.avif') }}" alt="Persona portrait">
+              <div id="persona-model-stage" class="persona-model-stage d-none"><canvas id="persona-model-canvas" class="persona-model-canvas"></canvas><div class="persona-model-overlay"></div></div>
               <video id="persona-portrait-video" class="persona-portrait-video d-none" autoplay muted loop playsinline></video>
+              <div id="persona-generated-stage" class="persona-generated-stage d-none">
+                <div class="generated-backdrop generated-backdrop-grid"></div>
+                <div class="generated-backdrop generated-backdrop-aura"></div>
+                <div id="generated-character" class="generated-character pack-anime gender-f face-soft hair-wolf outfit-uniform accessory-none">
+                  <div class="generated-shoulders"></div>
+                  <div class="generated-bust"></div>
+                  <div class="generated-neck"></div>
+                  <div class="generated-head">
+                    <div class="generated-ear ear-left"></div>
+                    <div class="generated-ear ear-right"></div>
+                    <div class="generated-hair generated-hair-back"></div>
+                    <div class="generated-face-shade"></div>
+                    <div class="generated-brow brow-left"></div>
+                    <div class="generated-brow brow-right"></div>
+                    <div class="generated-eye eye-left"><span class="generated-eye-iris"></span><span class="generated-eye-highlight"></span></div>
+                    <div class="generated-eye eye-right"><span class="generated-eye-iris"></span><span class="generated-eye-highlight"></span></div>
+                    <div class="generated-nose"></div>
+                    <div class="generated-mouth-wrap"><div id="generated-mouth" class="generated-mouth mouth-rest"></div></div>
+                    <div class="generated-hair generated-hair-front"></div>
+                    <div class="generated-fringe fringe-left"></div>
+                    <div class="generated-fringe fringe-center"></div>
+                    <div class="generated-fringe fringe-right"></div>
+                    <div class="generated-glasses"><span class="lens lens-left"></span><span class="bridge"></span><span class="lens lens-right"></span></div>
+                    <div class="generated-headset"><span class="generated-headset-band"></span><span class="generated-headset-ear generated-headset-left"></span><span class="generated-headset-ear generated-headset-right"></span><span class="generated-headset-mic"></span></div>
+                    <div class="generated-earring generated-earring-left"></div>
+                    <div class="generated-earring generated-earring-right"></div>
+                  </div>
+                  <div class="generated-outfit generated-outfit-main"></div>
+                  <div class="generated-outfit generated-outfit-inner"></div>
+                  <div class="generated-outfit generated-outfit-collar collar-left"></div>
+                  <div class="generated-outfit generated-outfit-collar collar-right"></div>
+                  <div class="generated-outfit generated-outfit-tie"></div>
+                  <div class="generated-outfit generated-outfit-hood"></div>
+                  <div class="generated-outfit generated-outfit-trim"></div>
+                </div>
+              </div>
               <div class="persona-portrait-shadow"></div>
               <div class="persona-portrait-gloss"></div>
               <div class="persona-ring"></div>
@@ -74,26 +131,13 @@
 
         <div class="persona-quickstrip">
           <div class="quickstrip-label">Quick Starts</div>
-          <div class="starter-grid">
-            <button class="starter-card" type="button" data-persona-prompt="Introduce yourself in a warm multilingual way and explain how I can use this persona mode.">
-              <span class="starter-title">Introduce Yourself</span>
-              <span class="starter-copy">Check personality and style.</span>
-            </button>
-            <button class="starter-card" type="button" data-persona-prompt="Talk to me in Urdu and English mixed naturally about how this project works.">
-              <span class="starter-title">Urdu + English</span>
-              <span class="starter-copy">Test multilingual voice output.</span>
-            </button>
-            <button class="starter-card" type="button" data-persona-prompt="Explain Flask background jobs in a simple, spoken style with short sentences.">
-              <span class="starter-title">Voice Friendly</span>
-              <span class="starter-copy">Test compact, speech-ready replies.</span>
-            </button>
-          </div>
+          <div class="starter-grid" id="persona-starter-grid"></div>
         </div>
       </section>
 
       <section class="persona-side-panel">
         <div class="panel-switcher" role="tablist" aria-label="Persona sections">
-          <button class="panel-switcher-btn is-active" type="button" data-panel-target="setup">Character</button>
+          <button class="panel-switcher-btn is-active" type="button" data-panel-target="setup">Setup</button>
           <button class="panel-switcher-btn" type="button" data-panel-target="voice">Voice</button>
           <button class="panel-switcher-btn" type="button" data-panel-target="chat">Chat</button>
         </div>
@@ -108,75 +152,82 @@
             <button id="reset-persona-btn" type="button" class="btn btn-sm btn-outline-light">Reset</button>
           </div>
 
+          <div id="persona-preset-chip-row" class="persona-preset-chip-row"></div>
+
           <div class="builder-grid">
-            <label class="field">
-              <span>Name</span>
-              <input id="persona-name" class="form-control" type="text" maxlength="40" value="Nova">
-            </label>
-            <label class="field">
-              <span>Preset</span>
-              <select id="persona-preset" class="form-select">
-                <option value="companion">Companion</option>
-                <option value="mentor">Mentor</option>
-                <option value="tutor">Tutor</option>
-                <option value="interviewer">Interviewer</option>
-                <option value="creative">Creative</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Motion</span>
-              <select id="persona-motion" class="form-select">
-                <option value="float">Soft Float</option>
-                <option value="cinematic">Cinematic</option>
-                <option value="hologram">Hologram</option>
-                <option value="still">Still</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Accent</span>
-              <input id="persona-accent" type="color" value="#7bf2df">
-            </label>
-            <label class="field field-wide">
-              <span>Role</span>
-              <input id="persona-role" class="form-control" type="text" maxlength="180" value="A multilingual AI companion for natural chat and voice conversation.">
-            </label>
-            <label class="field field-wide">
-              <span>Style</span>
-              <textarea id="persona-style" class="form-control" rows="3">Warm, clear, emotionally steady, and naturally conversational.</textarea>
-            </label>
-            <label class="field field-wide">
-              <span>Avatar Portrait / Animation</span>
-              <input id="persona-avatar-file" type="file" accept="image/*,video/mp4,video/webm,.avif,.gif,.webp">
-            </label>
+            <label class="field"><span>Name</span><input id="persona-name" class="form-control" type="text" maxlength="40" value="Nova"></label>
+            <label class="field"><span>Preset</span><select id="persona-preset" class="form-select"></select></label>
+            <label class="field"><span>Motion</span><select id="persona-motion" class="form-select"><option value="float">Soft Float</option><option value="cinematic">Cinematic</option><option value="hologram">Hologram</option><option value="still">Still</option></select></label>
+            <label class="field"><span>Scenario</span><select id="persona-scenario" class="form-select"><option value="companion">Companion</option><option value="tutor">Tutor</option><option value="interviewer">Interviewer</option><option value="recruiter">Recruiter</option><option value="sales-agent">Sales Agent</option><option value="support-agent">Support Agent</option><option value="therapist">Reflective Listener</option><option value="coding-mentor">Coding Mentor</option></select></label>
+            <label class="field"><span>Tone</span><select id="persona-tone" class="form-select"><option value="calm">Calm</option><option value="energetic">Energetic</option><option value="formal">Formal</option><option value="playful">Playful</option><option value="empathetic">Empathetic</option></select></label>
+            <label class="field"><span>Accent</span><input id="persona-accent" type="color" value="#7bf2df"></label>
+            <label class="field"><span>Avatar Pack</span><select id="persona-avatar-pack" class="form-select"><option value="realistic">Real 3D</option><option value="corporate">Corporate 3D</option><option value="hologram">Hologram 3D</option><option value="minimal-assistant">Minimal 3D</option><option value="anime-3d">Custom GLB 3D</option><option value="image-fallback">Image Fallback</option></select></label>
+            <label class="field"><span>Model Selector</span><select id="persona-model-selector" class="form-select"><option value="realistic-female">Realistic Female</option><option value="realistic-male">Realistic Male</option><option value="professional-female">Professional Female</option><option value="professional-male">Professional Male</option></select></label>
+            <div class="field">
+              <span>Avatar Source</span>
+              <div class="persona-avatar-source-actions">
+                <button id="persona-use-built-in-btn" type="button" class="btn btn-sm btn-outline-info">Use Real 3D Avatar</button>
+                <label class="btn btn-sm btn-outline-light mb-0">Upload GLB / Fallback Image<input id="persona-avatar-file" type="file" accept="image/*,video/mp4,video/webm,.avif,.gif,.webp,.glb" hidden></label>
+              </div>
+              <div class="field-help">The default path is a real-time 3D avatar. Upload a GLB for custom 3D models or use an image only as fallback.</div>
+            </div>
+            <label class="field"><span>Gender</span><select id="persona-avatar-gender" class="form-select"><option value="f">Female</option><option value="m">Male</option></select></label>
+            <label class="field"><span>Face Style</span><select id="persona-avatar-face" class="form-select"><option value="soft">Soft</option><option value="sharp">Sharp</option></select></label>
+            <label class="field"><span>Hair Style</span><select id="persona-avatar-hair-style" class="form-select"><option value="wolf">Layered Wolf Cut</option><option value="bob">Bob</option><option value="short">Short</option><option value="long">Long Flow</option><option value="ponytail">Ponytail</option></select></label>
+            <label class="field"><span>Accessory</span><select id="persona-avatar-accessory" class="form-select"><option value="none">None</option><option value="glasses">Glasses</option><option value="headset">Headset</option><option value="earring">Earrings</option></select></label>
+            <label class="field"><span>Outfit Style</span><select id="persona-avatar-outfit-style" class="form-select"><option value="uniform">Uniform</option><option value="blazer">Blazer</option><option value="hoodie">Hoodie</option><option value="dress">Dress</option></select></label>
+            <label class="field"><span>Skin Tone</span><select id="persona-avatar-skin-tone" class="form-select"><option value="fair">Fair</option><option value="warm">Warm</option><option value="tan">Tan</option><option value="deep">Deep</option></select></label>
+            <label class="field"><span>Hair Color</span><input id="persona-avatar-hair-color" type="color" value="#2d314b"></label>
+            <label class="field"><span>Eye Color</span><input id="persona-avatar-eye-color" type="color" value="#89b7ff"></label>
+            <label class="field"><span>Outfit Color</span><input id="persona-avatar-outfit-color" type="color" value="#1f3b77"></label>
+            <label class="field field-wide"><span>Role</span><input id="persona-role" class="form-control" type="text" maxlength="180" value="A multilingual AI companion for natural chat and voice conversation."></label>
+            <label class="field field-wide"><span>Style</span><textarea id="persona-style" class="form-control" rows="3">Warm, clear, emotionally steady, and naturally conversational.</textarea></label>
+            <div class="field field-wide persona-bundles-field">
+              <div class="field-header-row">
+                <span>Collections / Knowledge Bundles</span>
+                <button id="persona-refresh-collections-btn" type="button" class="btn btn-sm btn-outline-light">Refresh</button>
+              </div>
+              <select id="persona-collections" class="form-select" multiple size="5"></select>
+              <p class="field-help">Select one or more bundles this persona should know. Voice and chat both use the selected bundles immediately.</p>
+              <div class="persona-bundle-actions">
+                <label class="field field-inline">
+                  <span>New bundle</span>
+                  <input id="persona-new-collection-name" class="form-control" type="text" maxlength="160" placeholder="Nova Docs">
+                </label>
+                <button id="persona-create-collection-btn" type="button" class="btn btn-outline-info">Create</button>
+                <label class="field field-inline persona-file-inline">
+                  <span>Upload files</span>
+                  <input id="persona-collection-file-input" type="file" multiple>
+                </label>
+                <button id="persona-upload-collection-files-btn" type="button" class="btn btn-outline-light">Index Files</button>
+              </div>
+              <div class="persona-bundle-actions">
+                <label class="field field-inline persona-url-inline">
+                  <span>Website URL</span>
+                  <input id="persona-collection-url" class="form-control" type="url" placeholder="https://example.com/docs">
+                </label>
+                <button id="persona-ingest-collection-url-btn" type="button" class="btn btn-outline-light">Ingest Site</button>
+              </div>
+              <div class="persona-bundle-summary">
+                <div class="persona-bundle-summary-head">
+                  <span>Attached knowledge</span>
+                  <span id="persona-bundle-summary-count" class="persona-bundle-count">No bundles selected</span>
+                </div>
+                <div id="persona-bundle-assets" class="persona-bundle-assets"></div>
+              </div>
+            </div>
           </div>
 
-          <details class="advanced-panel">
+          <details id="persona-advanced-panel" class="advanced-panel">
             <summary class="advanced-summary">Advanced Lip Calibration</summary>
             <div class="advanced-body">
-              <div class="advanced-actions">
-                <button id="persona-calibrate-btn" type="button" class="btn btn-sm btn-outline-light">Enable Drag Calibration</button>
-              </div>
+              <div class="advanced-actions"><button id="persona-calibrate-btn" type="button" class="btn btn-sm btn-outline-light">Enable Drag Calibration</button></div>
               <div class="swatch-row compact-controls">
-                <label class="swatch-field">
-                  <span>Zoom</span>
-                  <input id="persona-zoom" type="range" min="1" max="1.35" step="0.01" value="1.06">
-                </label>
-                <label class="swatch-field">
-                  <span>Lip X</span>
-                  <input id="persona-mouth-x" type="range" min="35" max="65" step="1" value="50">
-                </label>
-                <label class="swatch-field">
-                  <span>Lip Y</span>
-                  <input id="persona-mouth-y" type="range" min="58" max="88" step="1" value="74">
-                </label>
-                <label class="swatch-field">
-                  <span>Lip Width</span>
-                  <input id="persona-mouth-width" type="range" min="44" max="120" step="1" value="72">
-                </label>
-                <label class="swatch-field">
-                  <span>Lip Height</span>
-                  <input id="persona-mouth-height" type="range" min="16" max="64" step="1" value="30">
-                </label>
+                <label class="swatch-field"><span>Zoom</span><input id="persona-zoom" type="range" min="1" max="1.35" step="0.01" value="1.06"></label>
+                <label class="swatch-field"><span>Lip X</span><input id="persona-mouth-x" type="range" min="35" max="65" step="1" value="50"></label>
+                <label class="swatch-field"><span>Lip Y</span><input id="persona-mouth-y" type="range" min="58" max="88" step="1" value="74"></label>
+                <label class="swatch-field"><span>Lip Width</span><input id="persona-mouth-width" type="range" min="44" max="120" step="1" value="72"></label>
+                <label class="swatch-field"><span>Lip Height</span><input id="persona-mouth-height" type="range" min="16" max="64" step="1" value="30"></label>
               </div>
             </div>
           </details>
@@ -192,40 +243,26 @@
           </div>
 
           <div class="builder-grid">
-            <label class="field">
-              <span>Language</span>
-              <select id="persona-language" class="form-select">
-                <option value="auto">Auto Detect</option>
-                <option value="en-US">English</option>
-                <option value="ur-PK">Urdu</option>
-                <option value="ar-SA">Arabic</option>
-                <option value="hi-IN">Hindi</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Voice</span>
-              <select id="persona-voice" class="form-select">
-                <option value="">Browser Default</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Rate</span>
-              <input id="persona-rate" class="form-range" type="range" min="0.7" max="1.2" step="0.05" value="0.95">
-            </label>
-            <label class="field">
-              <span>Pitch</span>
-              <input id="persona-pitch" class="form-range" type="range" min="0.8" max="1.3" step="0.05" value="1">
-            </label>
+            <label class="field"><span>Language</span><select id="persona-language" class="form-select"><option value="auto">Auto Detect</option><option value="en-US">English</option><option value="ur-PK">Urdu</option><option value="ar-SA">Arabic</option><option value="hi-IN">Hindi</option></select></label>
+            <label class="field"><span>Voice</span><select id="persona-voice" class="form-select"><option value="">Browser Default</option></select></label>
+            <label class="field"><span>Rate</span><input id="persona-rate" class="form-range" type="range" min="0.7" max="1.2" step="0.05" value="0.95"></label>
+            <label class="field"><span>Pitch</span><input id="persona-pitch" class="form-range" type="range" min="0.8" max="1.3" step="0.05" value="1"></label>
           </div>
 
           <div class="toggle-row">
             <label class="toggle-pill"><input id="auto-speak" type="checkbox" checked> <span>Auto speak replies</span></label>
             <label class="toggle-pill"><input id="use-web" type="checkbox"> <span>Allow web lookup</span></label>
             <label class="toggle-pill"><input id="deep-web" type="checkbox"> <span>Deep web search</span></label>
+            <label class="toggle-pill"><input id="persona-bilingual" type="checkbox"> <span>Bilingual mode</span></label>
+            <label class="toggle-pill"><input id="persona-speak-shorter" type="checkbox"> <span>Speak shorter</span></label>
+            <label class="toggle-pill"><input id="persona-transcript-preview" type="checkbox"> <span>Transcript preview</span></label>
           </div>
+
+          <div class="persona-meter-wrap"><span class="field-label">Mic Level</span><div class="persona-meter"><span id="persona-mic-meter"></span></div></div>
 
           <div class="voice-actions">
             <button id="persona-mic-btn" type="button" class="btn btn-outline-info">Talk Once</button>
+            <button id="persona-push-talk-btn" type="button" class="btn btn-outline-light">Hold To Talk</button>
             <button id="persona-voice-chat-btn" type="button" class="btn btn-primary">Start Voice Chat</button>
             <button id="persona-stop-btn" type="button" class="btn btn-outline-light">Stop</button>
             <button id="persona-test-voice-btn" type="button" class="btn btn-outline-light">Test Voice</button>
@@ -239,7 +276,12 @@
               <h2 class="section-title">Separate persona session</h2>
               <p class="section-copy">The persona keeps its own session here. Builder and voice controls stay out of the way while you chat.</p>
             </div>
-            <button id="clear-persona-chat-btn" type="button" class="btn btn-sm btn-outline-light">Clear</button>
+            <div class="persona-chat-actions"><button id="clear-persona-chat-btn" type="button" class="btn btn-sm btn-outline-light">Clear</button></div>
+          </div>
+
+          <div class="persona-conversation-tools">
+            <input id="persona-conversation-search" class="form-control" type="search" placeholder="Search persona chats...">
+            <div id="persona-conversation-list" class="persona-conversation-list"></div>
           </div>
 
           <div id="persona-chat-log" class="persona-chat-log"></div>
@@ -259,6 +301,15 @@
     </main>
   </div>
 
+  <script src="https://unpkg.com/three@0.161.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.161.0/examples/js/loaders/GLTFLoader.js"></script>
   <script src="{{ url_for('static', filename='js/persona.js') }}"></script>
 </body>
 </html>
+
+
+
+
+
+
+

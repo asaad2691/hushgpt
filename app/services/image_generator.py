@@ -11,6 +11,11 @@ from PIL import Image
 class ImageGenerationService:
     _pipeline = None
     _img2img_pipeline = None
+    _default_negative_prompt = (
+        "low quality, blurry, bad anatomy, bad proportions, deformed face, malformed hands, "
+        "extra fingers, missing fingers, extra limbs, duplicate body, fused limbs, disfigured, "
+        "mutated, poorly drawn face, poorly drawn eyes, asymmetrical eyes, distorted body, cropped, cut off"
+    )
     _named_hues = {
         "red": 0,
         "orange": 25,
@@ -43,13 +48,15 @@ class ImageGenerationService:
             raise RuntimeError("Image generation is disabled. Set IMAGE_GENERATION_ENABLED=true.")
 
         pipeline = self._get_pipeline()
+        enhanced_prompt = self._enhance_prompt(prompt)
+        final_negative_prompt = self._merge_negative_prompt(negative_prompt, enhanced_prompt)
 
         steps = int(kwargs.get("num_inference_steps", self.steps))
         guidance_scale = float(kwargs.get("guidance_scale", self.guidance_scale))
 
         result = pipeline(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
+            prompt=enhanced_prompt,
+            negative_prompt=final_negative_prompt,
             num_inference_steps=steps,
             guidance_scale=guidance_scale,
         )
@@ -72,19 +79,108 @@ class ImageGenerationService:
             return self._save_image(recolored)
 
         pipeline = self._get_img2img_pipeline()
+        enhanced_prompt = self._enhance_prompt(prompt, for_edit=True)
+        final_negative_prompt = self._merge_negative_prompt(negative_prompt, enhanced_prompt)
         steps = int(kwargs.get("num_inference_steps", self.steps))
         guidance_scale = float(kwargs.get("guidance_scale", self.guidance_scale))
         strength = float(kwargs.get("strength", self.edit_strength))
 
         result = pipeline(
-            prompt=prompt,
+            prompt=enhanced_prompt,
             image=input_image,
-            negative_prompt=negative_prompt,
+            negative_prompt=final_negative_prompt,
             strength=strength,
             num_inference_steps=steps,
             guidance_scale=guidance_scale,
         )
         return self._save_image(result.images[0])
+
+    def _enhance_prompt(self, prompt, for_edit=False):
+        raw_prompt = (prompt or "").strip()
+        if not raw_prompt:
+            return raw_prompt
+
+        lowered = raw_prompt.lower()
+        normalized = re.sub(r"\bfairytail\b", "fairytale", raw_prompt, flags=re.IGNORECASE)
+        additions = []
+
+        character_terms = [
+            "character", "queen", "king", "knight", "princess", "prince", "warrior",
+            "girl", "boy", "man", "woman", "person", "hero", "villain", "anime",
+        ]
+        is_character_prompt = any(term in lowered for term in character_terms)
+        is_duo_prompt = any(term in lowered for term in [" and ", " couple", " duo", " two "])
+        is_animated_prompt = any(term in lowered for term in ["animated", "anime", "cartoon", "illustration"])
+
+        if is_character_prompt:
+            additions.extend([
+                "highly detailed face",
+                "clear eyes",
+                "consistent anatomy",
+                "well-defined hands",
+                "clean character design",
+            ])
+
+        if is_duo_prompt:
+            additions.extend([
+                "two distinct characters",
+                "both fully visible",
+                "balanced composition",
+                "clear separation between characters",
+            ])
+
+        if "queen" in lowered and "knight" in lowered:
+            additions.extend([
+                "regal fantasy queen",
+                "armored knight companion",
+                "storybook fairytale scene",
+            ])
+
+        if is_animated_prompt:
+            additions.extend([
+                "polished animated illustration",
+                "clean linework",
+                "expressive faces",
+            ])
+
+        if "cyberpunk" in lowered:
+            additions.extend([
+                "cyberpunk neon lighting",
+                "futuristic armor details",
+                "vibrant sci-fi city color palette",
+            ])
+
+        if not for_edit:
+            additions.extend([
+                "centered composition",
+                "sharp focus",
+                "high detail",
+            ])
+
+        unique_additions = []
+        seen = set()
+        for item in additions:
+            key = item.lower()
+            if key not in seen:
+                seen.add(key)
+                unique_additions.append(item)
+
+        if not unique_additions:
+            return normalized
+
+        return f"{normalized}, " + ", ".join(unique_additions)
+
+    def _merge_negative_prompt(self, negative_prompt, prompt):
+        parts = [self._default_negative_prompt]
+        cleaned_negative = (negative_prompt or "").strip()
+        if cleaned_negative:
+            parts.append(cleaned_negative)
+
+        prompt_text = (prompt or "").lower()
+        if any(term in prompt_text for term in ["animated", "anime", "cartoon", "illustration"]):
+            parts.append("photorealistic, realistic skin, live action")
+
+        return ", ".join(part for part in parts if part).strip(", ")
 
     def _try_prompt_color_edit(self, image, prompt):
         if not prompt:

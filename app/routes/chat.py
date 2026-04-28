@@ -12,6 +12,19 @@ from app.services.web_search import WebSearchService
 chat_bp = Blueprint("chat", __name__)
 
 
+def _sse_event(data, event=None):
+    payload = []
+    if event:
+        payload.append(f"event: {event}")
+
+    text = "" if data is None else str(data)
+    lines = text.splitlines() or [""]
+    for line in lines:
+        payload.append(f"data: {line}")
+
+    return "\n".join(payload) + "\n\n"
+
+
 def _client_id():
     return (request.headers.get("X-Client-Id") or "legacy-default").strip()[:64] or "legacy-default"
 
@@ -505,41 +518,40 @@ def chat_stream():
     def generate():
         collected = []
         try:
-            yield (
-                "event: meta\ndata: "
-                + json.dumps(
+            yield _sse_event(
+                json.dumps(
                     {
                         "conversation_id": conv.id,
                         "model": get_active_model_name(provider_override, model_override),
                         "provider": provider_override or current_app.config["MODEL_PROVIDER"],
                         "collection_ids": collection_ids,
                     }
-                )
-                + "\n\n"
+                ),
+                event="meta",
             )
             if sources:
-                yield f"event: sources\ndata: {json.dumps(sources)}\n\n"
+                yield _sse_event(json.dumps(sources), event="sources")
             if direct_web_reply:
-                yield "event: web\ndata: used\n\n"
-                yield f"data: {direct_web_reply}\n\n"
+                yield _sse_event("used", event="web")
+                yield _sse_event(direct_web_reply)
                 _store_reply(conv, prompt, direct_web_reply)
-                yield "event: done\ndata: [DONE]\n\n"
+                yield _sse_event("[DONE]", event="done")
                 return
             if web_context:
-                yield "event: web\ndata: used\n\n"
+                yield _sse_event("used", event="web")
             for chunk in client.chat_stream(messages=messages, options=options):
                 token = chunk.get("message", {}).get("content", "")
                 done = chunk.get("done", False)
                 if token:
                     collected.append(token)
-                    yield f"data: {token}\n\n"
+                    yield _sse_event(token)
                 if done:
                     assistant_text = _sanitize_assistant_reply(prompt, "".join(collected).strip())
                     _store_reply(conv, prompt, assistant_text)
-                    yield "event: done\ndata: [DONE]\n\n"
+                    yield _sse_event("[DONE]", event="done")
                     break
         except Exception as exc:
             db.session.rollback()
-            yield f"event: error\ndata: {str(exc)}\n\n"
+            yield _sse_event(str(exc), event="error")
 
     return Response(generate(), mimetype="text/event-stream")

@@ -121,6 +121,7 @@ let currentUsername = localStorage.getItem("ai.username") || "";
 let modelCatalog = null;
 let knowledgeCollections = [];
 let selectedCollection = null;
+let webSearchReady = false;
 
 const settings = {
   providerOverride: localStorage.getItem("ai.providerOverride") || modelProvider,
@@ -277,29 +278,72 @@ function setMirroredStatus(primary, secondary, value, kind) {
   setStatusChip(secondary, value, kind);
 }
 
+function shouldPromptUseWeb(prompt = "") {
+  const text = String(prompt || "").trim().toLowerCase();
+  if (!text) return false;
+
+  const cues = [
+    "latest",
+    "current",
+    "today",
+    "news",
+    "headlines",
+    "recent",
+    "right now",
+    "price",
+    "weather",
+    "forecast",
+    "temperature",
+    "time",
+    "date",
+    "update",
+    "global",
+    "world",
+    "market",
+    "stock",
+    "crypto",
+    "who is",
+    "what is happening",
+    "what's happening",
+    "whats happening",
+    "around the world",
+    "look up",
+    "search",
+    "find online",
+    "internet",
+  ];
+
+  return cues.some((cue) => text.includes(cue));
+}
+
+function isWebSearchReady() {
+  return webSearchReady;
+}
+
 function buildChatOptions() {
   let resolvedMaxTokens = settings.maxNewTokens;
   let temperature = settings.temperature;
   let topP = settings.topP;
   let doSample = settings.doSample;
+  const preset = settings.responsePreset || "balanced";
 
-  if (settings.responsePreset === "fast") {
+  if (preset === "fast") {
     resolvedMaxTokens = Math.min(resolvedMaxTokens, 160);
     temperature = Math.min(temperature, 0.55);
     topP = Math.min(topP, 0.85);
-  } else if (settings.responsePreset === "balanced") {
+  } else if (preset === "balanced") {
     resolvedMaxTokens = Math.min(resolvedMaxTokens, 320);
-  } else if (settings.responsePreset === "detailed") {
+  } else if (preset === "detailed") {
     resolvedMaxTokens = Math.max(resolvedMaxTokens, 900);
     temperature = Math.max(temperature, 0.5);
-  } else if (settings.responsePreset === "coding") {
+  } else if (preset === "coding") {
     resolvedMaxTokens = Math.max(resolvedMaxTokens, 700);
     temperature = Math.min(temperature, 0.35);
     topP = Math.min(topP, 0.82);
     doSample = false;
   }
 
-  if (settings.concise) {
+  if (settings.concise && !["coding", "detailed"].includes(preset)) {
     resolvedMaxTokens = Math.min(resolvedMaxTokens, 120);
   }
 
@@ -359,16 +403,26 @@ async function loadSystemStatus() {
     if (!res.ok) {
       setMirroredStatus(statusImageEl, statusImageModalEl, "Unavailable", "error");
       setMirroredStatus(statusOcrEl, statusOcrModalEl, "Unavailable", "error");
+      webSearchReady = false;
+      if (useWebToggleEl) useWebToggleEl.title = "Internet health check unavailable.";
       return;
     }
 
     const captionerReady = Boolean(data?.pipelines?.image_captioner?.ready);
     const ocrReady = Boolean(data?.pipelines?.image_ocr?.ready);
+    webSearchReady = Boolean(data?.web?.ready);
     setMirroredStatus(statusImageEl, statusImageModalEl, captionerReady ? "Ready" : "Loading", captionerReady ? "ok" : "warn");
     setMirroredStatus(statusOcrEl, statusOcrModalEl, ocrReady ? "Ready" : "Loading", ocrReady ? "ok" : "warn");
+    if (useWebToggleEl) {
+      useWebToggleEl.title = webSearchReady
+        ? "Internet connection detected. Web-assisted answers are available."
+        : "Internet connection not detected. Web-assisted answers may be unavailable.";
+    }
   } catch (err) {
     setMirroredStatus(statusImageEl, statusImageModalEl, "Offline", "error");
     setMirroredStatus(statusOcrEl, statusOcrModalEl, "Offline", "error");
+    webSearchReady = false;
+    if (useWebToggleEl) useWebToggleEl.title = "Internet connection not detected.";
   }
 
   try {
